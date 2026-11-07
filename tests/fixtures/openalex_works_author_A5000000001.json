@@ -82,18 +82,22 @@
    ],
    "keywords": [
     {
+     "id": "https://openalex.org/keywords/citizen-appeals",
      "display_name": "citizen appeals",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/text-classification",
      "display_name": "text classification",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/public-administration",
      "display_name": "public administration",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/deep-learning",
      "display_name": "deep learning",
      "score": 0.5
     }
@@ -206,18 +210,22 @@
    ],
    "keywords": [
     {
+     "id": "https://openalex.org/keywords/text-to-sql",
      "display_name": "text-to-sql",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/schema-linking",
      "display_name": "schema linking",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/open-weight-models",
      "display_name": "open-weight models",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/enterprise-bi",
      "display_name": "enterprise bi",
      "score": 0.5
     }
@@ -303,14 +311,17 @@
    ],
    "keywords": [
     {
+     "id": "https://openalex.org/keywords/handwritten-text-recognition",
      "display_name": "handwritten text recognition",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/digital-humanities",
      "display_name": "digital humanities",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/archives",
      "display_name": "archives",
      "score": 0.5
     }

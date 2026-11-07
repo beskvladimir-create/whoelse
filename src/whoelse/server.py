@@ -59,6 +59,34 @@ def _cand_view(i: int, c: Candidate) -> dict[str, Any]:
     }
 
 
+def _headline(prof: Profile, cands: list[Candidate]) -> str:
+    """The first thing the agent (and the user) reads. Says the thing in one breath."""
+    n = len(cands)
+    if n == 0:
+        return f"Nobody with recent public work overlapping {prof.name}'s came up. Try a longer recent_months, or add a GitHub/Hugging Face handle to the profile."
+    reach = sum(1 for c in cands if c.reachable in ("card", "email"))
+    cards = sum(1 for c in cands if c.reachable == "card")
+    topics = sorted({t for c in cands for t in c.overlap.shared_topics[:1]})[:3]
+    line = f"{n} people are working on what {prof.name} is working on"
+    if topics:
+        line += f" ({'; '.join(topics)})"
+    line += f". {reach} can be written to today"
+    if cards:
+        line += f", {cards} of them published a whoelse card and said what they're open to"
+    line += ". Each one comes with a reason, their recent work, and only the contacts they made public themselves."
+    return line
+
+
+def _lines(cands: list[Candidate]) -> list[str]:
+    out = []
+    for i, c in enumerate(cands):
+        p = c.person
+        where = f" ({p.affiliation})" if p.affiliation else ""
+        reach = {"card": "card ✓", "email": "email", "website": "site/github", "profile_only": "profile only"}[c.reachable]
+        out.append(f"{i:>2}. {p.name}{where}: {c.why}. reach: {reach}")
+    return out
+
+
 def _need_profile(name: str) -> Profile:
     prof = _load_profile(name)
     if not prof:
@@ -90,6 +118,13 @@ async def load_profile(
     prof = await build_profile(
         name, orcid_id=orcid, github_login=github, huggingface_user=huggingface, affiliation_hint=affiliation_hint
     )
+    if prof.ambiguous:
+        return {
+            "status": "ambiguous",
+            "message": "Several people share this name on OpenAlex. Ask the user which one they are, then call "
+                       "load_profile again with orcid= (best) or affiliation_hint=.",
+            "options": prof.ambiguous,
+        }
     path = save_profile(prof)
     out = profile_summary(prof)
     out["saved_to"] = path
@@ -114,6 +149,8 @@ async def find_overlaps(
     _last[prof.name] = cands
     connected = [i for i, c in enumerate(cands) if c.reachable == "card"]
     return {
+        "headline": _headline(prof, cands),
+        "lines": _lines(cands),
         "profile": prof.name,
         "count": len(cands),
         "connected": connected,

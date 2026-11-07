@@ -3,9 +3,10 @@ record: public emails, researcher URLs (personal site, GitHub, Scholar). Keyless
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from typing import Any
 
-from ..http import http
+from ..http import SourceError, http
 from ..models import Contact
 
 BASE = "https://pub.orcid.org/v3.0"
@@ -32,12 +33,52 @@ def _classify(url: str, c: Contact) -> None:
         c.other.append(url)
 
 
+_NS = {
+    "email": "http://www.orcid.org/ns/email",
+    "ru": "http://www.orcid.org/ns/researcher-url",
+    "common": "http://www.orcid.org/ns/common",
+}
+
+
+def _from_xml(text: str) -> dict[str, Any]:
+    """ORCID answers XML when content negotiation fails. Convert the two bits we use."""
+    root = ET.fromstring(text)
+    emails = []
+    for e in root.iter(f"{{{_NS['email']}}}email"):
+        val = e.findtext(f"{{{_NS['email']}}}email", default="")
+        emails.append({"email": val, "visibility": e.get("visibility", "")})
+    urls = []
+    for r in root.iter(f"{{{_NS['ru']}}}researcher-url"):
+        val = r.findtext(f"{{{_NS['ru']}}}url", default="")
+        urls.append({"url": {"value": val}})
+    return {"emails": {"email": emails}, "researcher-urls": {"researcher-url": urls}}
+
+
 async def person(orcid: str) -> Contact:
-    data: dict[str, Any] | None = await http.get_json(
-        f"{BASE}/{orcid}/person", headers={"Accept": "application/json"}, fixture_name=f"orcid_person_{orcid}"
-    )
     c = Contact(orcid=f"https://orcid.org/{orcid}")
     c.provenance["orcid"] = "orcid"
+    raw = await http.get_json(
+        f"{BASE}/{orcid}/person",
+        headers={"Accept": "application/vnd.orcid+json"},
+        fixture_name=f"orcid_person_{orcid}",
+        accept="application/vnd.orcid+json",
+    )
+    data: dict[str, Any] | None
+    if isinstance(raw, str):
+        txt = raw.lstrip()
+        if txt.startswith("<"):
+            try:
+                data = _from_xml(txt)
+            except ET.ParseError:
+                data = None
+        else:
+            import json as _json
+            try:
+                data = _json.loads(txt)
+            except ValueError:
+                data = None
+    else:
+        data = raw
     if not data:
         return c
     for e in ((data.get("emails") or {}).get("email") or []):

@@ -33,6 +33,8 @@ def _params(**kw: Any) -> dict[str, Any]:
     p = {k: v for k, v in kw.items() if v is not None}
     if settings().mailto:
         p["mailto"] = settings().mailto
+    if settings().openalex_key:
+        p["api_key"] = settings().openalex_key
     return p
 
 
@@ -74,6 +76,7 @@ def work_to_asset(w: dict[str, Any]) -> Asset:
         source="openalex",
         summary=abstract_from_inverted(w.get("abstract_inverted_index")),
         keywords=[k.get("display_name", "").lower() for k in (w.get("keywords") or []) if k.get("display_name")],
+        keyword_ids=[(k.get("id") or "").split("openalex.org/")[-1] for k in (w.get("keywords") or []) if k.get("id")],
         topics=[t.get("display_name", "") for t in topics if t.get("display_name")],
         topic_ids=[_short_id(t.get("id")) for t in topics if t.get("id")],
         stats={"citations": int(w.get("cited_by_count") or 0)},
@@ -88,9 +91,13 @@ def authorship_to_person(a: dict[str, Any]) -> Person | None:
     if not name:
         return None
     inst = (a.get("institutions") or [{}])[0] if a.get("institutions") else {}
-    ids = {"openalex": _short_id(au.get("id"))}
+    ids: dict[str, str] = {}
+    if au.get("id"):
+        ids["openalex"] = _short_id(au["id"])
     if au.get("orcid"):
         ids["orcid"] = au["orcid"].rsplit("/", 1)[-1]
+    if not ids:
+        return None  # nothing stable to merge on
     p = Person(name=name, ids=ids, affiliation=inst.get("display_name", "") or "", country=inst.get("country_code", "") or "")
     if ids.get("orcid"):
         p.contact.orcid = f"https://orcid.org/{ids['orcid']}"
@@ -136,6 +143,22 @@ async def works_by_topic(topic_id: str, *, since: date, limit: int = 100, page: 
             **{"per-page": min(limit, 200)},
         ),
         fixture_name=f"openalex_works_topic_{topic_id}_p{page}",
+    )
+    return (data or {}).get("results", [])
+
+
+async def works_by_keyword(keyword_id: str, *, since: date, limit: int = 100, page: int = 1) -> list[dict[str, Any]]:
+    """Raw works carrying one OpenAlex keyword (e.g. keywords/text-to-sql). Much sharper than topics."""
+    data = await http.get_json(
+        f"{BASE}/works",
+        _params(
+            filter=f"keywords.id:{keyword_id},from_publication_date:{since.isoformat()},type:article|preprint",
+            select=WORK_FIELDS,
+            sort="cited_by_count:desc",
+            page=page,
+            **{"per-page": min(limit, 200)},
+        ),
+        fixture_name=f"openalex_works_kw_{keyword_id.split('/')[-1]}_p{page}",
     )
     return (data or {}).get("results", [])
 

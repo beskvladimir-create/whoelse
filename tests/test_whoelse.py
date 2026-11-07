@@ -111,3 +111,25 @@ async def test_server_tools_end_to_end():
 async def test_tools_are_listed():
     tools = {t.name for t in await server.mcp.list_tools()}
     assert {"load_profile", "find_overlaps", "joint_work_brief", "draft_outreach", "whats_new_from_peers", "make_card"} <= tools
+
+
+async def test_namesakes_are_not_guessed():
+    r = await server.load_profile("Li Wei")
+    assert r["status"] == "ambiguous" and len(r["options"]) == 3
+    assert r["options"][0]["institutions"] == "Peking University | Peking University"
+    # pinned by ORCID it resolves
+    r = await server.load_profile("Li Wei", orcid="0000-0002-2222-3333")
+    assert r["ids"]["openalex"] == "A5000000102"
+    # pinned by affiliation hint it resolves too
+    r = await server.load_profile("Li Wei", affiliation_hint="tsinghua")
+    assert r["ids"]["openalex"] == "A5000000102"
+
+
+async def test_keyword_walk_finds_people_topics_miss():
+    prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
+    assert "keywords/text-to-sql" in prof.keyword_ids
+    cands = await find_overlaps(prof, limit=15)
+    names = [c.person.name for c in cands]
+    assert "Nikhil Rao" in names  # only reachable through the keyword filter
+    rao = next(c for c in cands if c.person.name == "Nikhil Rao")
+    assert rao.reachable == "email" and rao.person.contact.provenance["email"] == "orcid public email"

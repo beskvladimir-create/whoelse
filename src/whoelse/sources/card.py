@@ -68,5 +68,5 @@ def render(name: str, working_on: list[str], open_to: list[str], contact: str, l
         "contact": contact,
         "languages": languages,
         "updated": date.today().isoformat(),
-        "spec": "https://github.com/besk-tech/whoelse#the-card",
+        "spec": "https://github.com/beskvladimir-create/whoelse#the-card",
     }

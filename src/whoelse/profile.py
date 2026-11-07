@@ -67,6 +67,7 @@ def aggregate(person: Person) -> None:
     topics: dict[str, float] = {}
     topic_ids: dict[str, float] = {}
     keywords: dict[str, float] = {}
+    keyword_ids: dict[str, float] = {}
     last: date | None = None
     for a in person.assets:
         w = _recency_weight(a.date) * _attention(a)
@@ -79,30 +80,64 @@ def aggregate(person: Person) -> None:
             if len(k) < 3 or k in STOP_KEYWORDS:
                 continue
             keywords[k] = keywords.get(k, 0.0) + w
+        for kid in a.keyword_ids:
+            keyword_ids[kid] = keyword_ids.get(kid, 0.0) + w
         if a.date and (last is None or a.date > last):
             last = a.date
     person.topics = dict(sorted(topics.items(), key=lambda x: -x[1])[:25])
     person.topic_ids = dict(sorted(topic_ids.items(), key=lambda x: -x[1])[:25])
     person.keywords = dict(sorted(keywords.items(), key=lambda x: -x[1])[:40])
+    person.keyword_ids = dict(sorted(keyword_ids.items(), key=lambda x: -x[1])[:40])
     person.last_active = last
 
 
-async def _openalex_author(name: str, orcid_id: str | None, affiliation_hint: str) -> dict | None:
+def _inst_names(r: dict) -> str:
+    out = []
+    for a in (r.get("affiliations") or []):
+        out.append(((a.get("institution") or {}).get("display_name") or ""))
+    for i in (r.get("last_known_institutions") or []):
+        out.append(i.get("display_name") or "")
+    return " | ".join(x for x in out if x)
+
+
+async def _openalex_author(name: str, orcid_id: str | None, affiliation_hint: str) -> tuple[dict | None, list[dict]]:
+    """Returns (author, namesakes). If several authors could be this person and nothing pins
+    one down, author is None and namesakes lists the options for the user to choose."""
     if orcid_id:
         au = await openalex.author_by_orcid(orcid_id)
         if au:
-            return au
+            return au, []
     results = await openalex.search_authors(name)
     if not results:
-        return None
+        return None, []
     if affiliation_hint:
         hint = affiliation_hint.lower()
-        for r in results:
-            insts = " ".join(i.get("display_name", "") for i in (r.get("affiliations") or [{}]) for i in [i.get("institution") or {}])
-            if hint in insts.lower():
-                return r
-    # Otherwise the most productive match. The user can override with an ORCID.
-    return max(results, key=lambda r: r.get("works_count", 0))
+        hits = [r for r in results if hint in _inst_names(r).lower()]
+        if len(hits) == 1:
+            return hits[0], []
+        results = hits or results
+    exact = [r for r in results if _norm(r.get("display_name", "")) == _norm(name)]
+    if len(exact) == 1:
+        return exact[0], []
+    if len(results) == 1:
+        return results[0], []
+    # Several people share this name. Guessing "the most productive" picks the wrong person
+    # often enough that we refuse to guess.
+    namesakes = [
+        {
+            "openalex": (r.get("id") or "").rsplit("/", 1)[-1],
+            "name": r.get("display_name"),
+            "orcid": (r.get("orcid") or "").rsplit("/", 1)[-1] or None,
+            "works": r.get("works_count", 0),
+            "institutions": _inst_names(r),
+        }
+        for r in results[:8]
+    ]
+    return None, namesakes
+
+
+def _norm(s: str) -> str:
+    return re.sub(r"[^a-z]", "", s.lower())
 
 
 async def build_profile(
@@ -120,7 +155,14 @@ async def build_profile(
 
     async def do_openalex() -> None:
         try:
-            au = await _openalex_author(name, orcid_id, affiliation_hint)
+            au, namesakes = await _openalex_author(name, orcid_id, affiliation_hint)
+            if namesakes:
+                prof.ambiguous = namesakes
+                prof.notes.append(
+                    "OpenAlex has several authors with this name. Pass orcid= or affiliation_hint= to pick one; "
+                    "the options are in 'ambiguous'."
+                )
+                return
             if not au:
                 prof.notes.append("OpenAlex: no author record found for that name; add an ORCID to pin it down.")
                 return
@@ -146,6 +188,7 @@ async def build_profile(
             prof.notes.append(f"arXiv unavailable: {e}")
 
     async def do_github() -> None:
+        nonlocal github_login
         if not github_login:
             return
         try:
@@ -166,6 +209,7 @@ async def build_profile(
             prof.notes.append(f"GitHub unavailable: {e}")
 
     async def do_hf() -> None:
+        nonlocal huggingface_user
         if not huggingface_user:
             return
         try:
@@ -178,7 +222,26 @@ async def build_profile(
         except SourceError as e:
             prof.notes.append(f"Hugging Face unavailable: {e}")
 
-    await asyncio.gather(do_openalex(), do_arxiv(), do_github(), do_hf())
+    await asyncio.gather(do_openalex(), do_arxiv())
+
+    # Authors link their own code and models in arXiv comments. If the user didn't tell us
+    # their handles, take the ones they published themselves.
+    if not github_login or not huggingface_user:
+        gh_votes: dict[str, int] = {}
+        hf_votes: dict[str, int] = {}
+        for a in assets:
+            for h in filter(None, a.extra.get("github_handles", "").split(",")):
+                gh_votes[h] = gh_votes.get(h, 0) + 1
+            for h in filter(None, a.extra.get("hf_handles", "").split(",")):
+                hf_votes[h] = hf_votes.get(h, 0) + 1
+        if not github_login and gh_votes:
+            github_login = max(gh_votes, key=gh_votes.get)
+            prof.notes.append(f"GitHub login '{github_login}' taken from the user's own arXiv comments.")
+        if not huggingface_user and hf_votes:
+            huggingface_user = max(hf_votes, key=hf_votes.get)
+            prof.notes.append(f"Hugging Face user '{huggingface_user}' taken from the user's own arXiv comments.")
+
+    await asyncio.gather(do_github(), do_hf())
 
     oid = orcid_id or prof.ids.get("orcid")
     if oid:
@@ -226,6 +289,7 @@ def profile_summary(prof: Profile, *, top: int = 8) -> dict:
         "assets": kinds,
         "top_topics": list(prof.topics)[:top],
         "top_keywords": list(prof.keywords)[:top * 2],
+        "ambiguous": prof.ambiguous,
         "contact": {k: v for k, v in prof.contact.model_dump().items() if v and k != "provenance"},
         "sources_used": prof.sources_used,
         "notes": prof.notes,

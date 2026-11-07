@@ -21,6 +21,8 @@ class Settings:
     # OpenAlex "polite pool": an email in the request gets you faster, more reliable responses.
     # It is only ever sent to api.openalex.org. Leave empty to stay anonymous.
     mailto: str = field(default_factory=lambda: os.environ.get("WHOELSE_MAILTO", ""))
+    # OpenAlex API key: without one, requests share a small per-IP daily budget. Free at https://openalex.org/settings/api
+    openalex_key: str = field(default_factory=lambda: os.environ.get("WHOELSE_OPENALEX_KEY", ""))
     # Optional GitHub token raises the search rate limit from 10 to 30 requests/min.
     github_token: str = field(default_factory=lambda: os.environ.get("GITHUB_TOKEN", ""))
     # How far back "working on it now" reaches, in months.
@@ -31,7 +33,7 @@ class Settings:
     fixtures_dir: Path | None = field(
         default_factory=lambda: Path(os.environ["WHOELSE_FIXTURES"]) if os.environ.get("WHOELSE_FIXTURES") else None
     )
-    user_agent: str = "whoelse/0.1 (+https://github.com/besk-tech/whoelse)"
+    user_agent: str = "whoelse/0.1 (+https://github.com/beskvladimir-create/whoelse)"
 
     @property
     def cache_dir(self) -> Path:

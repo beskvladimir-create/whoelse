@@ -1,0 +1,48 @@
+{
+ "results": [
+  {
+   "id": "https://openalex.org/A5000000101",
+   "display_name": "Li Wei",
+   "orcid": null,
+   "works_count": 300,
+   "affiliations": [
+    {
+     "institution": {
+      "display_name": "Peking University"
+     }
+    }
+   ],
+   "last_known_institutions": [
+    {
+     "display_name": "Peking University"
+    }
+   ]
+  },
+  {
+   "id": "https://openalex.org/A5000000102",
+   "display_name": "Li Wei",
+   "orcid": "https://orcid.org/0000-0002-2222-3333",
+   "works_count": 12,
+   "affiliations": [
+    {
+     "institution": {
+      "display_name": "Tsinghua University"
+     }
+    }
+   ],
+   "last_known_institutions": [
+    {
+     "display_name": "Tsinghua University"
+    }
+   ]
+  },
+  {
+   "id": "https://openalex.org/A5000000103",
+   "display_name": "Wei Li",
+   "orcid": null,
+   "works_count": 40,
+   "affiliations": [],
+   "last_known_institutions": null
+  }
+ ]
+}

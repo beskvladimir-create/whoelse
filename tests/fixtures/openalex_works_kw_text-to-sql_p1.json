@@ -1,0 +1,250 @@
+{
+ "results": [
+  {
+   "id": "https://openalex.org/W10",
+   "doi": "https://doi.org/10.0000/W10",
+   "display_name": "Think2SQL: Reinforcing LLM Reasoning for Text2SQL",
+   "publication_date": "2026-04-20",
+   "abstract_inverted_index": {
+    "We": [
+     0
+    ],
+    "reinforce": [
+     1
+    ],
+    "reasoning": [
+     2
+    ],
+    "for": [
+     3
+    ],
+    "text": [
+     4
+    ],
+    "to": [
+     5
+    ],
+    "SQL.": [
+     6
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000002",
+      "display_name": "Paolo Papotti",
+      "orcid": "https://orcid.org/0000-0003-0651-4128"
+     },
+     "institutions": [
+      {
+       "display_name": "EURECOM",
+       "country_code": "FR"
+      }
+     ]
+    },
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000006",
+      "display_name": "Li Wei",
+      "orcid": null
+     },
+     "institutions": [
+      {
+       "display_name": "Tsinghua University",
+       "country_code": "CN"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10181",
+     "display_name": "Natural Language Interfaces to Databases",
+     "score": 0.99
+    },
+    {
+     "id": "https://openalex.org/T11714",
+     "display_name": "Large Language Models and Applications",
+     "score": 0.8
+    }
+   ],
+   "keywords": [
+    {
+     "id": "https://openalex.org/keywords/text-to-sql",
+     "display_name": "text-to-sql",
+     "score": 0.5
+    },
+    {
+     "id": "https://openalex.org/keywords/reinforcement-learning",
+     "display_name": "reinforcement learning",
+     "score": 0.5
+    },
+    {
+     "id": "https://openalex.org/keywords/reasoning",
+     "display_name": "reasoning",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 40,
+   "primary_location": {
+    "source": {
+     "display_name": "VLDB"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W10"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W10"
+   }
+  },
+  {
+   "id": "https://openalex.org/W11",
+   "doi": "https://doi.org/10.0000/W11",
+   "display_name": "Routing Queries Across SQL Generators",
+   "publication_date": "2025-11-04",
+   "abstract_inverted_index": {
+    "LLM": [
+     0
+    ],
+    "routing": [
+     1
+    ],
+    "for": [
+     2
+    ],
+    "SQL": [
+     3
+    ],
+    "generation.": [
+     4
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000003",
+      "display_name": "Amine Mhedhbi",
+      "orcid": "https://orcid.org/0009-0000-9342-5144"
+     },
+     "institutions": [
+      {
+       "display_name": "Polytechnique Montréal",
+       "country_code": "CA"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10181",
+     "display_name": "Natural Language Interfaces to Databases",
+     "score": 0.99
+    }
+   ],
+   "keywords": [
+    {
+     "id": "https://openalex.org/keywords/text-to-sql",
+     "display_name": "text-to-sql",
+     "score": 0.5
+    },
+    {
+     "id": "https://openalex.org/keywords/llm-routing",
+     "display_name": "llm routing",
+     "score": 0.5
+    },
+    {
+     "id": "https://openalex.org/keywords/query-optimization",
+     "display_name": "query optimization",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 15,
+   "primary_location": {
+    "source": {
+     "display_name": "arXiv"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W11"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W11"
+   }
+  },
+  {
+   "id": "https://openalex.org/W30",
+   "doi": "https://doi.org/10.0000/W30",
+   "display_name": "Enterprise Text-to-SQL Without a Cloud",
+   "publication_date": "2026-09-09",
+   "abstract_inverted_index": {
+    "Text-to-SQL": [
+     0
+    ],
+    "on": [
+     1
+    ],
+    "premises": [
+     2
+    ],
+    "with": [
+     3
+    ],
+    "small": [
+     4
+    ],
+    "open": [
+     5
+    ],
+    "models.": [
+     6
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000030",
+      "display_name": "Nikhil Rao",
+      "orcid": "https://orcid.org/0000-0001-1111-2222"
+     },
+     "institutions": [
+      {
+       "display_name": "IIT Madras",
+       "country_code": "IN"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10181",
+     "display_name": "Natural Language Interfaces to Databases",
+     "score": 0.99
+    }
+   ],
+   "keywords": [
+    {
+     "id": "https://openalex.org/keywords/text-to-sql",
+     "display_name": "text-to-sql",
+     "score": 0.5
+    },
+    {
+     "id": "https://openalex.org/keywords/on-premise-deployment",
+     "display_name": "on-premise deployment",
+     "score": 0.5
+    },
+    {
+     "id": "https://openalex.org/keywords/open-weight-models",
+     "display_name": "open-weight models",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 2,
+   "primary_location": {
+    "source": {
+     "display_name": "arXiv"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W30"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W30"
+   }
+  }
+ ]
+}

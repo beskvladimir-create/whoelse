@@ -88,14 +88,17 @@
    ],
    "keywords": [
     {
+     "id": "https://openalex.org/keywords/text-to-sql",
      "display_name": "text-to-sql",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/reinforcement-learning",
      "display_name": "reinforcement learning",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/reasoning",
      "display_name": "reasoning",
      "score": 0.5
     }
@@ -175,14 +178,17 @@
    ],
    "keywords": [
     {
+     "id": "https://openalex.org/keywords/text-to-sql",
      "display_name": "text-to-sql",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/llm-routing",
      "display_name": "llm routing",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/query-optimization",
      "display_name": "query optimization",
      "score": 0.5
     }
@@ -250,10 +256,12 @@
    ],
    "keywords": [
     {
+     "id": "https://openalex.org/keywords/schema-linking",
      "display_name": "schema linking",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/text-to-sql",
      "display_name": "text-to-sql",
      "score": 0.5
     }

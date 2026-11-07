@@ -20,6 +20,7 @@ class Asset(BaseModel):
     source: str  # openalex | arxiv | github | huggingface
     summary: str = ""  # abstract / description, trimmed
     keywords: list[str] = Field(default_factory=list)
+    keyword_ids: list[str] = Field(default_factory=list)  # OpenAlex keyword ids (keywords/text-to-sql)
     topics: list[str] = Field(default_factory=list)  # OpenAlex topic display names
     topic_ids: list[str] = Field(default_factory=list)  # OpenAlex topic ids (T10xxx)
     stats: dict[str, int] = Field(default_factory=dict)  # citations, stars, downloads, likes
@@ -53,6 +54,7 @@ class Person(BaseModel):
     topics: dict[str, float] = Field(default_factory=dict)  # topic name -> weight
     topic_ids: dict[str, float] = Field(default_factory=dict)
     keywords: dict[str, float] = Field(default_factory=dict)
+    keyword_ids: dict[str, float] = Field(default_factory=dict)
     last_active: _date | None = None
     card: "Card | None" = None  # if they publish a whoelse card, they're "connected"
 
@@ -75,6 +77,7 @@ class Profile(Person):
     """The user's own profile, built from their public work."""
 
     built_at: _date | None = None
+    ambiguous: list[dict] = Field(default_factory=list)  # namesakes to choose from, when no ORCID given
     sources_used: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
 

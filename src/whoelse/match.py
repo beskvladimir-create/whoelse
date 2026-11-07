@@ -86,8 +86,10 @@ def _weighted_overlap(a: dict[str, float], b: dict[str, float]) -> tuple[float, 
 def score(me: Profile, p: Person, *, recent_months: int) -> tuple[float, Overlap]:
     t_score, t_shared = _weighted_overlap(me.topic_ids, p.topic_ids)
     k_score, k_shared = _weighted_overlap(me.keywords, p.keywords)
-    # topics are curated; keywords are noisier but cover code and models
-    overlap_score = 0.65 * t_score + 0.35 * k_score
+    kid_score, _ = _weighted_overlap(me.keyword_ids, p.keyword_ids)
+    # OpenAlex topics are coarse (a text-to-SQL paper lands in "Topic Modeling"); keywords are
+    # what actually says "same problem". Free-text keywords also cover code and models.
+    overlap_score = 0.25 * t_score + 0.45 * max(k_score, kid_score) + 0.30 * k_score
 
     my_kinds = {a.kind for a in me.assets}
     their_kinds = {a.kind for a in p.assets}
@@ -229,6 +231,17 @@ async def find_overlaps(
         except SourceError as e:
             errors.append(f"openalex topic {tid}: {e}")
 
+    async def papers_by_keyword(kid: str) -> None:
+        try:
+            for w in await openalex.works_by_keyword(kid, since=since, limit=100):
+                asset = openalex.work_to_asset(w)
+                for a in (w.get("authorships") or []):
+                    p = openalex.authorship_to_person(a)
+                    if p:
+                        pool.add(p, asset)
+        except SourceError as e:
+            errors.append(f"openalex keyword {kid}: {e}")
+
     async def papers_by_query(q: str) -> None:
         try:
             for w in await openalex.works_search(q, since=since, limit=50):
@@ -265,7 +278,8 @@ async def find_overlaps(
         except SourceError as e:
             errors.append(f"huggingface '{q}': {e}")
 
-    tasks = [papers_by_topic(t) for t in list(me.topic_ids)[:topic_limit]]
+    tasks = [papers_by_keyword(k) for k in list(me.keyword_ids)[:keyword_queries + 2]]
+    tasks += [papers_by_topic(t) for t in list(me.topic_ids)[:topic_limit]]
     queries = list(me.keywords)[:keyword_queries]
     tasks += [papers_by_query(q) for q in queries]
     if include_code:

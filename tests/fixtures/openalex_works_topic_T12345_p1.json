@@ -66,14 +66,17 @@
    ],
    "keywords": [
     {
+     "id": "https://openalex.org/keywords/public-affairs",
      "display_name": "public affairs",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/topic-classification",
      "display_name": "topic classification",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/large-language-models",
      "display_name": "large language models",
      "score": 0.5
     }
@@ -159,18 +162,22 @@
    ],
    "keywords": [
     {
+     "id": "https://openalex.org/keywords/open-government",
      "display_name": "open government",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/local-llm",
      "display_name": "local llm",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/document-classification",
      "display_name": "document classification",
      "score": 0.5
     },
     {
+     "id": "https://openalex.org/keywords/freedom-of-information",
      "display_name": "freedom of information",
      "score": 0.5
     }

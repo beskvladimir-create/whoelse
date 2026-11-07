@@ -29,7 +29,7 @@ dev = ["pytest>=8", "pytest-asyncio>=0.23"]
 whoelse = "whoelse.server:main"
 
 [project.urls]
-Homepage = "https://github.com/besk-tech/whoelse"
+Homepage = "https://github.com/beskvladimir-create/whoelse"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/whoelse"]

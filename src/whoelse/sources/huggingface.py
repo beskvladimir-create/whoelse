@@ -20,6 +20,25 @@ def _date(s: str | None) -> date | None:
         return None
 
 
+REPACK_TAGS = {"gguf", "awq", "gptq", "exl2", "mlx", "imatrix", "onnx", "ggml"}
+
+
+def is_repack(r: dict[str, Any]) -> bool:
+    """A quantisation or format conversion of someone else's model: not the author's work."""
+    tags = [t.lower() for t in (r.get("tags") or [])]
+    if any(t.startswith("base_model:quantized:") for t in tags):
+        return True
+    has_base = any(t.startswith("base_model:") for t in tags)
+    return has_base and bool(REPACK_TAGS & set(tags))
+
+
+def base_model_of(r: dict[str, Any]) -> str:
+    for t in (r.get("tags") or []):
+        if t.startswith("base_model:") and not t.startswith(("base_model:quantized:", "base_model:finetune:", "base_model:merge:", "base_model:adapter:")):
+            return t.split(":", 1)[1]
+    return ""
+
+
 def _to_asset(kind: str, r: dict[str, Any]) -> Asset:
     rid = r.get("id") or r.get("modelId") or ""
     path = {"model": "", "dataset": "datasets/", "space": "spaces/"}[kind]
@@ -42,14 +61,14 @@ def _to_asset(kind: str, r: dict[str, Any]) -> Asset:
         keywords=tags,
         stats=stats,
         coauthors=[r.get("author") or rid.split("/")[0]],
-        extra={"author": r.get("author") or rid.split("/")[0], "pipeline": str(r.get("pipeline_tag") or "")},
+        extra={"author": r.get("author") or rid.split("/")[0], "pipeline": str(r.get("pipeline_tag") or ""), "base_model": base_model_of(r)},
     )
 
 
 async def _list(kind: str, params: dict[str, Any], fixture_name: str) -> list[Asset]:
     endpoint = {"model": "models", "dataset": "datasets", "space": "spaces"}[kind]
     data = await http.get_json(f"{BASE}/{endpoint}", params, fixture_name=fixture_name)
-    return [_to_asset(kind, r) for r in (data or [])]
+    return [_to_asset(kind, r) for r in (data or []) if not (kind == "model" and is_repack(r))]
 
 
 async def search(query: str, *, kind: str = "model", limit: int = 30) -> list[Asset]:

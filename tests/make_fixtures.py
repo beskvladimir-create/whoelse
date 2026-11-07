@@ -43,7 +43,7 @@ def work(id_, title, date, authors, topics, kws, cites, venue, abstract):
             for aid, an, orc, inst, cc in authors
         ],
         "topics": topics,
-        "keywords": [{"display_name": k, "score": 0.5} for k in kws],
+        "keywords": [{"id": "https://openalex.org/keywords/" + k.replace(" ", "-"), "display_name": k, "score": 0.5} for k in kws],
         "cited_by_count": cites,
         "primary_location": {"source": {"display_name": venue}, "landing_page_url": f"https://doi.org/10.0000/{id_}"},
         "best_oa_location": {"landing_page_url": f"https://arxiv.org/abs/{id_}"},
@@ -121,6 +121,28 @@ put(
     },
 )
 put("openalex_works_topic_T11714_p1", {"results": []})
+# keyword walks (the sharp path)
+put("openalex_works_kw_text-to-sql_p1", {"results": [
+    work("W10", "Think2SQL: Reinforcing LLM Reasoning for Text2SQL", "2026-04-20", [PAPOTTI, STUDENT], [T_SQL, T_LLM],
+         ["text-to-sql", "reinforcement learning", "reasoning"], 40, "VLDB", "We reinforce reasoning for text to SQL."),
+    work("W11", "Routing Queries Across SQL Generators", "2025-11-04", [MHEDHBI], [T_SQL],
+         ["text-to-sql", "llm routing", "query optimization"], 15, "arXiv", "LLM routing for SQL generation."),
+    work("W30", "Enterprise Text-to-SQL Without a Cloud", "2026-09-09", [("A5000000030", "Nikhil Rao", "0000-0001-1111-2222", "IIT Madras", "IN")], [T_SQL],
+         ["text-to-sql", "on-premise deployment", "open-weight models"], 2, "arXiv", "Text-to-SQL on premises with small open models."),
+]})
+for k in ("citizen-appeals", "text-classification", "public-administration", "schema-linking", "deep-learning", "open-weight-models", "enterprise-bi"):
+    put(f"openalex_works_kw_{k}_p1", {"results": []})
+# namesakes: three different "Li Wei"
+put("openalex_authors_li_wei", {"results": [
+    {"id": "https://openalex.org/A5000000101", "display_name": "Li Wei", "orcid": None, "works_count": 300, "affiliations": [{"institution": {"display_name": "Peking University"}}], "last_known_institutions": [{"display_name": "Peking University"}]},
+    {"id": "https://openalex.org/A5000000102", "display_name": "Li Wei", "orcid": "https://orcid.org/0000-0002-2222-3333", "works_count": 12, "affiliations": [{"institution": {"display_name": "Tsinghua University"}}], "last_known_institutions": [{"display_name": "Tsinghua University"}]},
+    {"id": "https://openalex.org/A5000000103", "display_name": "Wei Li", "orcid": None, "works_count": 40, "affiliations": [], "last_known_institutions": None},
+]})
+put("openalex_author_orcid_0000-0002-2222-3333", {"id": "https://openalex.org/A5000000102", "display_name": "Li Wei", "orcid": "https://orcid.org/0000-0002-2222-3333", "works_count": 12, "last_known_institutions": [{"display_name": "Tsinghua University", "country_code": "CN"}]})
+put("openalex_works_author_A5000000102", {"results": []})
+put("arxiv_au_li_wei", {"__text__": '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'})
+put("orcid_person_0000-0002-2222-3333", {"emails": {"email": []}, "researcher-urls": {"researcher-url": []}})
+put("orcid_person_0000-0001-1111-2222", {"emails": {"email": [{"email": "nrao@iitm.ac.in", "visibility": "public"}]}, "researcher-urls": {"researcher-url": []}})
 put("openalex_works_topic_T10992_p1", {"results": []})
 put("openalex_works_search_text-to-sql", {"results": []})
 put("openalex_works_search_schema_linking", {"results": []})
