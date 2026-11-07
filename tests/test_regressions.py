@@ -169,3 +169,13 @@ async def test_existing_coauthors_are_listed_separately_not_ranked():
     cands, _, known = await find_overlaps(prof, limit=20)
     names = [c.person.name for c in cands]
     assert "Nikolai Apurin" not in names
+
+
+def test_orcid_xml_parser_reads_only_public_and_no_duplicates():
+    from whoelse.sources import orcid
+    xml = """<person:person xmlns:person="http://www.orcid.org/ns/person" xmlns:email="http://www.orcid.org/ns/email" xmlns:researcher-url="http://www.orcid.org/ns/researcher-url">
+<email:emails><email:email visibility="limited"><email:email>secret@x.org</email:email></email:email><email:email visibility="public"><email:email>open@x.org</email:email></email:email></email:emails>
+<researcher-url:researcher-urls><researcher-url:researcher-url><researcher-url:url>https://x.org/me</researcher-url:url></researcher-url:researcher-url></researcher-url:researcher-urls></person:person>"""
+    d = orcid._from_xml(xml)
+    assert [(e["email"], e["visibility"]) for e in d["emails"]["email"]] == [("secret@x.org", "limited"), ("open@x.org", "public")]
+    assert d["researcher-urls"]["researcher-url"][0]["url"]["value"] == "https://x.org/me"

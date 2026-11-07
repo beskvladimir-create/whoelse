@@ -45,8 +45,11 @@ def _from_xml(text: str) -> dict[str, Any]:
     root = ET.fromstring(text)
     emails = []
     for e in root.iter(f"{{{_NS['email']}}}email"):
+        # ORCID nests <email:email visibility=".."><email:email>addr</email:email></email:email>;
+        # only the outer element carries visibility, only the inner carries text.
         val = e.findtext(f"{{{_NS['email']}}}email", default="")
-        emails.append({"email": val, "visibility": e.get("visibility", "")})
+        if val:
+            emails.append({"email": val.strip(), "visibility": e.get("visibility", "")})
     urls = []
     for r in root.iter(f"{{{_NS['ru']}}}researcher-url"):
         val = r.findtext(f"{{{_NS['ru']}}}url", default="")
