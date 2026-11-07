@@ -169,6 +169,77 @@
    }
   },
   {
+   "id": "https://openalex.org/W31",
+   "doi": "https://doi.org/10.0000/W31",
+   "display_name": "Appeals Routing in a Federal Portal",
+   "publication_date": "2026-02-02",
+   "abstract_inverted_index": {
+    "Routing": [
+     0
+    ],
+    "appeals.": [
+     1
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000007",
+      "display_name": "Nikolai Apurin",
+      "orcid": null
+     },
+     "institutions": [
+      {
+       "display_name": "Artwell",
+       "country_code": "RU"
+      }
+     ]
+    },
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000001",
+      "display_name": "Vladimir Beskorovainyi",
+      "orcid": "https://orcid.org/0000-0002-0000-0001"
+     },
+     "institutions": [
+      {
+       "display_name": "besk.tech",
+       "country_code": "GE"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T12345",
+     "display_name": "Text Classification in Public Administration",
+     "score": 0.95
+    }
+   ],
+   "keywords": [
+    {
+     "id": "https://openalex.org/keywords/text-to-sql",
+     "display_name": "text-to-sql",
+     "score": 0.5
+    },
+    {
+     "id": "https://openalex.org/keywords/citizen-appeals",
+     "display_name": "citizen appeals",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 1,
+   "primary_location": {
+    "source": {
+     "display_name": "arXiv"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W31"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W31"
+   }
+  },
+  {
    "id": "https://openalex.org/W30",
    "doi": "https://doi.org/10.0000/W30",
    "display_name": "Enterprise Text-to-SQL Without a Cloud",

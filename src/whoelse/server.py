@@ -154,7 +154,7 @@ async def find_overlaps(
     or models overlap the user's profile, with whatever contact they made public and a one-line
     reason for each. Candidates get an index for joint_work_brief / draft_outreach."""
     prof = _need_profile(name)
-    cands, source_errors = await _find_overlaps(
+    cands, source_errors, known = await _find_overlaps(
         prof, limit=limit, recent_months=recent_months, include_code=include_code, include_models=include_models
     )
     _last[prof.name] = cands
@@ -167,6 +167,7 @@ async def find_overlaps(
         "connected": connected,
         "candidates": [_cand_view(i, c) for i, c in enumerate(cands)],
         "source_errors": source_errors,
+        "already_working_with": [{"name": p.name, "affiliation": p.affiliation} for p in known],
         "note": "Index refers to this list. Contacts are only those the person published; see contact_provenance.",
     }
 

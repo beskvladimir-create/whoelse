@@ -149,15 +149,23 @@ async def test_one_broken_candidate_site_does_not_kill_results(monkeypatch):
         raise RuntimeError("renderer exploded")
     monkeypatch.setattr(m.card, "fetch", boom)
     prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
-    cands, errors = await find_overlaps(prof, limit=5)
+    cands, errors, _ = await find_overlaps(prof, limit=5)
     assert cands  # still got results
     assert any("renderer exploded" in e for e in errors)
 
 
 async def test_outreach_prefers_card_contact():
     prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
-    cands, _ = await find_overlaps(prof, limit=10)
+    cands, _, _ = await find_overlaps(prof, limit=10)
     amine = next(c for c in cands if c.person.name == "Amine Mhedhbi")
     from whoelse.brief import outreach_skeleton
     sk = outreach_skeleton(prof, amine)
     assert sk["to"] == amine.person.card.contact and "card" in sk["to_provenance"]
+
+
+async def test_existing_coauthors_are_listed_separately_not_ranked():
+    # Nikolai Apurin coauthored W2 with me; make him appear in the pool via a topic walk
+    prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
+    cands, _, known = await find_overlaps(prof, limit=20)
+    names = [c.person.name for c in cands]
+    assert "Nikolai Apurin" not in names

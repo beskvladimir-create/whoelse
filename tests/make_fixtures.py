@@ -127,6 +127,7 @@ put("openalex_works_kw_text-to-sql_p1", {"results": [
          ["text-to-sql", "reinforcement learning", "reasoning"], 40, "VLDB", "We reinforce reasoning for text to SQL."),
     work("W11", "Routing Queries Across SQL Generators", "2025-11-04", [MHEDHBI], [T_SQL],
          ["text-to-sql", "llm routing", "query optimization"], 15, "arXiv", "LLM routing for SQL generation."),
+    work("W31", "Appeals Routing in a Federal Portal", "2026-02-02", [OLDCOAUTHOR, ME], [T_GOV], ["text-to-sql", "citizen appeals"], 1, "arXiv", "Routing appeals."),
     work("W30", "Enterprise Text-to-SQL Without a Cloud", "2026-09-09", [("A5000000030", "Nikhil Rao", "0000-0001-1111-2222", "IIT Madras", "IN")], [T_SQL],
          ["text-to-sql", "on-premise deployment", "open-weight models"], 2, "arXiv", "Text-to-SQL on premises with small open models."),
 ]})

@@ -49,7 +49,7 @@ async def test_build_profile_merges_sources():
 
 async def test_find_overlaps_ranks_and_enriches():
     prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
-    cands, _ = await find_overlaps(prof, limit=10)
+    cands, _, _ = await find_overlaps(prof, limit=10)
     names = [c.person.name for c in cands]
     # I am not my own candidate
     assert "Vladimir Beskorovainyi" not in names
@@ -75,7 +75,7 @@ async def test_find_overlaps_ranks_and_enriches():
 
 async def test_brief_and_outreach():
     prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
-    cands, _ = await find_overlaps(prof, limit=10)
+    cands, _, _ = await find_overlaps(prof, limit=10)
     amine = next(c for c in cands if c.person.name == "Amine Mhedhbi")
     brief = joint_work_brief(prof, amine)
     assert brief["them"]["card"]["contact"] == "amine.mhedhbi@polymtl.ca"
@@ -128,7 +128,7 @@ async def test_namesakes_are_not_guessed():
 async def test_keyword_walk_finds_people_topics_miss():
     prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
     assert "keywords/text-to-sql" in prof.keyword_ids
-    cands, _ = await find_overlaps(prof, limit=15)
+    cands, _, _ = await find_overlaps(prof, limit=15)
     names = [c.person.name for c in cands]
     assert "Nikhil Rao" in names  # only reachable through the keyword filter
     rao = next(c for c in cands if c.person.name == "Nikhil Rao")
@@ -137,7 +137,7 @@ async def test_keyword_walk_finds_people_topics_miss():
 
 async def test_github_by_name_requires_unique_hit_and_subject_match():
     prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
-    cands, errors = await find_overlaps(prof, limit=15)
+    cands, errors, _ = await find_overlaps(prof, limit=15)
     by = {c.person.name: c for c in cands}
     # Papotti: unique hit + repo about text-to-SQL -> accepted, provenance says how
     assert by["Paolo Papotti"].person.ids.get("github") == "ppapotti"

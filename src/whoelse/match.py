@@ -348,8 +348,8 @@ async def find_overlaps(
     topic_limit: int = 5,
     keyword_queries: int = 3,
     lookup_github_by_name: bool = True,
-) -> tuple[list[Candidate], list[str]]:
-    """Returns (candidates, source_errors)."""
+) -> tuple[list[Candidate], list[str], list[Person]]:
+    """Returns (candidates, source_errors, people_you_already_publish_with)."""
     recent_months = recent_months or settings().recent_months
     since = date.today() - timedelta(days=30 * recent_months)
     pool = _Pool(me)
@@ -469,13 +469,17 @@ async def find_overlaps(
     merged = _merge_by_name(top)
 
     out: list[Candidate] = []
+    known: list[Person] = []
     for p in merged:
-        if _is_org(p) or ov_is_coauthor(me, p):
-            continue  # organisations and people you already publish with are not "who else"
+        if _is_org(p):
+            continue
+        if ov_is_coauthor(me, p):
+            known.append(p)  # not "who else", but worth showing separately
+            continue
         p.assets = dedupe_assets(p.assets)
         aggregate(p)
         s, ov = score(me, p, recent_months=recent_months, df=df, n_docs=n_docs)
         s += {"card": 0.2, "email": 0.05, "website": 0.02, "profile_only": 0.0}[_reachable(p)]
         out.append(Candidate(person=p, score=round(s, 3), overlap=ov, why=_why(p, ov), reachable=_reachable(p)))  # type: ignore[arg-type]
     out.sort(key=lambda c: -c.score)
-    return out[:limit], errors
+    return out[:limit], errors, known
