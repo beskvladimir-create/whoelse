@@ -135,6 +135,14 @@ Optional environment:
 - Star, follow, like or post on your behalf.
 - Keep anything anywhere but your machine.
 
+## First run on your own name
+
+```bash
+WHOELSE_MAILTO=you@example.org python -m whoelse.scripts.first_run "Your Name" --orcid 0000-0000-0000-0000
+```
+
+Prints the people, the reasons, the best format for each, and how to reach them; saves everything to `whoelse-first-run.json`. Nothing is sent.
+
 ## Develop
 
 ```bash

@@ -54,12 +54,25 @@ def joint_work_brief(me: Profile, c: Candidate) -> dict:
     their_kinds = {a.kind for a in p.assets}
     both = my_kinds | their_kinds
 
+    runnable = {"repo", "dataset", "model"}
     ranked = []
     for fid, label, effort, needs, desc in FORMATS:
-        fit = sum(1 for k in needs if k in both) / (len(needs) or 1)
-        # reward complementarity: formats that use what only one side has
-        uses_gap = any(k in c.overlap.they_have or k in c.overlap.you_have for k in needs)
-        s = fit + (0.5 if uses_gap else 0.0) + (0.3 if effort == "days" else 0.1 if effort == "weeks" else 0.0)
+        have = {k for k in needs if k in both}
+        fit = len(have) / (len(needs) or 1)
+        s = fit + (0.35 if effort == "days" else 0.1 if effort == "weeks" else 0.0)
+        if fid in ("replication", "joint_benchmark", "merge_tools"):
+            # these only work when BOTH sides have something runnable
+            if not (my_kinds & runnable and their_kinds & runnable):
+                s -= 0.8
+        if fid == "shared_dataset" and "dataset" not in their_kinds and "dataset" not in my_kinds:
+            s -= 0.8
+        if fid in ("compare_note", "joint_paper", "review_each_other") and "paper" not in their_kinds:
+            s -= 0.5  # they have no paper to compare or review
+        # reward using what only one side has: that's the reason to collaborate at all
+        if any(k in c.overlap.they_have or k in c.overlap.you_have for k in needs):
+            s += 0.4
+        if fit == 0:
+            s -= 0.6
         ranked.append((round(s, 2), fid, label, effort, desc))
     ranked.sort(key=lambda x: -x[0])
 
