@@ -28,10 +28,6 @@ def _norm_name(n: str) -> str:
     return " ".join(parts)
 
 
-def _same_person(a: str, b: str) -> bool:
-    return _norm_name(a) == _norm_name(b)
-
-
 class _Pool:
     """People found so far, merged by stable ids, then by exact name."""
 
@@ -45,9 +41,15 @@ class _Pool:
         }
 
     def is_me(self, p: Person) -> bool:
-        if _norm_name(p.name) in self.my_names:
+        if any(f"{k}:{v}" in self.my_ids for k, v in p.ids.items() if v):
             return True
-        return any(f"{k}:{v}" in self.my_ids for k, v in p.ids.items() if v)
+        if _norm_name(p.name) not in self.my_names:
+            return False
+        # same name: a different scholarly id proves it is a namesake, not me
+        for k in ("openalex", "orcid"):
+            if self.me.ids.get(k) and p.ids.get(k) and self.me.ids[k] != p.ids[k]:
+                return False
+        return True
 
     def _key(self, p: Person) -> str:
         for k in ("openalex", "github", "orcid", "huggingface"):
@@ -156,6 +158,10 @@ def _why(p: Person, ov: Overlap) -> str:
         bits.append("same topic: " + ", ".join(specific_topics))
     elif ov.shared_topics:
         bits.append("same field: " + ov.shared_topics[0])
+    else:
+        recent = sorted((a for a in p.assets if a.title), key=lambda a: a.date or date.min, reverse=True)
+        if recent:
+            bits.append(f"new {recent[0].kind} on your keywords: {recent[0].title[:60]}")
     if ov.they_have:
         bits.append("they have " + "/".join(ov.they_have) + " you don't")
     if p.last_active:
@@ -170,7 +176,7 @@ def _reachable(p: Person) -> str:
         return "card"
     if p.contact.email:
         return "email"
-    if p.contact.website or p.contact.github or p.contact.linkedin:
+    if p.contact.website or p.contact.github or p.contact.linkedin or p.contact.huggingface:
         return "website"
     return "profile_only"
 
@@ -194,7 +200,9 @@ async def _github_by_name(p: Person, me: Profile) -> None:
         return
     try:
         hits = await github.search_users(p.name)
-    except SourceError:
+    except SourceError as e:
+        if "429" in str(e) or "403" in str(e):
+            raise  # surfaced by _enrich_safe as "github search rate-limited"
         return
     if len(hits) != 1:
         return  # 0 = not there; >1 = namesakes, not worth the risk
@@ -239,6 +247,7 @@ async def _enrich(p: Person, me: Profile | None = None, *, lookup_github_by_name
                 p.ids.setdefault("github", gh)
                 if u.name and u.name.lower() != gh.lower() and p.name.lower() == gh.lower():
                     p.name = u.name  # a handle became a person
+                    p.contact.provenance["name"] = "github profile name"
                 for f in ("email", "website"):
                     if getattr(u.contact, f) and not getattr(p.contact, f):
                         setattr(p.contact, f, getattr(u.contact, f))
@@ -256,6 +265,7 @@ async def _enrich(p: Person, me: Profile | None = None, *, lookup_github_by_name
                 p.ids["huggingface_org"] = hf
             elif ov.get("fullname") and len(str(ov["fullname"]).split()) >= 2:
                 p.name = str(ov["fullname"])
+                p.contact.provenance["name"] = "hugging face profile fullname"
     if p.contact.website:
         p.card = await card.fetch(p.contact.website)
 
@@ -264,6 +274,8 @@ async def _enrich_safe(p: Person, me: Profile, errors: list[str], *, lookup_gith
     """One candidate's broken website must never take the whole result down."""
     try:
         await _enrich(p, me, lookup_github_by_name=lookup_github_by_name)
+    except SourceError as e:
+        errors.append(f"github search rate-limited while enriching {p.name}: {e}")
     except Exception as e:  # noqa: BLE001
         errors.append(f"enrich {p.name}: {type(e).__name__}: {e}")
 
@@ -276,11 +288,29 @@ def _is_org(p: Person) -> bool:
     return bool(p.ids.get("github_org") or p.ids.get("huggingface_org"))
 
 
+_AFF_STOP = {"university", "of", "the", "institute", "college", "school", "department", "dept", "lab", "laboratory",
+             "research", "center", "centre", "technology", "science", "sciences", "and", "de", "for", "national", "state"}
+
+
+def _aff_tokens(aff: str) -> set[str]:
+    return {t for t in re.findall(r"[^\W\d_]{3,}", fold(aff)) if t not in _AFF_STOP}
+
+
+def _title_keys(p: Person) -> set[str]:
+    return {re.sub(r"\W+", " ", fold(a.title)).strip()[:80] for a in p.assets if a.kind == "paper"}
+
+
 def _second_signal(keep: Person, p: Person) -> str | None:
     """A shared full name is not enough to merge two records (and hand one person's email to
     another). Require one more link between them."""
-    a, b = keep.affiliation.lower(), p.affiliation.lower()
-    if a and b and (a in b or b in a):
+    if _title_keys(keep) & _title_keys(p):
+        return "same paper"
+    # The person typed their full name into their own GitHub/HF profile: that is a claim they made,
+    # unlike a login that merely resembles a name. Accept it when the name is distinctive enough.
+    if p.contact.provenance.get("name") and len(_norm_name(p.name).split()) >= 2 and not _common_name(p.name):
+        return p.contact.provenance["name"] + " matches"
+    ta, tb = _aff_tokens(keep.affiliation), _aff_tokens(p.affiliation)
+    if ta and tb and (ta & tb):
         return "same affiliation"
     gh = p.ids.get("github") or github.login_from_url(p.contact.github)
     if gh:
@@ -297,6 +327,17 @@ def _second_signal(keep: Person, p: Person) -> str | None:
     if keep.contact.website and p.contact.website and _host(keep.contact.website) == _host(p.contact.website):
         return "same website"
     return None
+
+
+_COMMON_FAMILY = {"wang", "li", "zhang", "liu", "chen", "yang", "huang", "zhao", "wu", "zhou", "kim", "lee", "park",
+                  "nguyen", "tran", "smith", "johnson", "williams", "brown", "jones", "garcia", "martinez", "singh",
+                  "kumar", "khan", "ali", "ahmed", "mohamed", "ivanov", "petrov", "muller", "schmidt", "rossi", "silva"}
+
+
+def _common_name(name: str) -> bool:
+    """Common family names collide too often for a profile fullname alone to merge records."""
+    parts = _norm_name(name).split()
+    return any(p in _COMMON_FAMILY for p in parts)
 
 
 def _host(u: str) -> str:
@@ -397,12 +438,9 @@ async def find_overlaps(
                     continue
                 for name in a.coauthors[:6]:
                     if name and len(name.split()) >= 2:
-                        p = Person(name=name)
-                        for h in filter(None, a.extra.get("github_handles", "").split(",")):
-                            p.ids.setdefault("github", h)
-                            p.contact.github = f"https://github.com/{h}"
-                            p.contact.provenance["github"] = "linked from their arXiv paper"
-                        pool.add(p, a)
+                        # keyed by name only; the paper's GitHub link stays on the asset and can
+                        # become a second signal in _merge_by_name, never an identity by itself
+                        pool.add(Person(name=name), a)
         except SourceError as e:
             errors.append(f"arxiv '{q}': {e}")
 
@@ -461,7 +499,11 @@ async def find_overlaps(
     scored.sort(key=lambda x: -x[0])
 
     top = [p for _, p, _ in scored[: max(limit, enrich_top)]]
-    await asyncio.gather(*(_enrich_safe(p, me, errors, lookup_github_by_name=lookup_github_by_name) for p in top[:enrich_top]))
+    by_name_budget = 8 if not settings().github_token else enrich_top
+    await asyncio.gather(*(
+        _enrich_safe(p, me, errors, lookup_github_by_name=lookup_github_by_name and i < by_name_budget)
+        for i, p in enumerate(top[:enrich_top])
+    ))
     top = [p for p in top if not pool.is_me(p)]  # enrichment may have revealed it was the user
 
     # A GitHub login or HF handle that turned out to be the same human as an OpenAlex author:

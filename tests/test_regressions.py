@@ -179,3 +179,113 @@ def test_orcid_xml_parser_reads_only_public_and_no_duplicates():
     d = orcid._from_xml(xml)
     assert [(e["email"], e["visibility"]) for e in d["emails"]["email"]] == [("secret@x.org", "limited"), ("open@x.org", "public")]
     assert d["researcher-urls"]["researcher-url"][0]["url"]["value"] == "https://x.org/me"
+
+
+# ---- second review round
+
+async def test_arxiv_coauthors_do_not_collapse_into_the_handle_owner():
+    """A paper by Papotti and Rossi links github.com/ppapotti. Rossi must stay Rossi."""
+    prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
+    cands, _, _ = await find_overlaps(prof, limit=30)
+    by = {c.person.name: c for c in cands}
+    assert "Giulia Rossi" in by, "coauthor vanished"
+    assert by["Giulia Rossi"].person.ids.get("github") is None
+    assert by["Giulia Rossi"].person.contact.email is None
+    # Papotti keeps his own preprint
+    assert any("Tiny-SQL" in a.title for a in by["Paolo Papotti"].person.assets)
+
+
+def test_affiliation_signal_is_token_based():
+    from whoelse.match import _second_signal
+    a = Person(name="John Smith", ids={"openalex": "A1"}, affiliation="MIT")
+    b = Person(name="John Smith", ids={"github": "x"}, affiliation="Smith College")
+    assert _second_signal(a, b) is None
+    c = Person(name="John Smith", ids={"github": "y"}, affiliation="Massachusetts Institute of Technology (MIT)")
+    assert _second_signal(a, c) == "same affiliation"
+
+
+def test_same_paper_is_a_second_signal():
+    from whoelse.match import _merge_by_name
+    paper = Asset(kind="paper", title="One Paper To Rule", url="u", source="openalex")
+    a = Person(name="Ada Example", ids={"openalex": "A1"}, assets=[paper])
+    b = Person(name="Ada Example", assets=[Asset(kind="paper", title="one paper to rule", url="v", source="arxiv")])
+    out = _merge_by_name([a, b])
+    assert len(out) == 1 and out[0].contact.provenance["merge"] == "same paper"
+
+
+def test_outreach_uses_the_relevant_work_not_the_newest():
+    from whoelse.brief import _relevant_asset
+    from whoelse.models import Candidate, Overlap
+    old_sql = Asset(kind="paper", title="Production Text-to-SQL", url="a", source="openalex", keywords=["text-to-sql"], date=date(2026, 1, 1))
+    new_pii = Asset(kind="repo", title="pii-roundtrip", url="b", source="github", keywords=["pii"], date=date(2026, 10, 1))
+    c = Candidate(person=Person(name="X Y"), score=1, overlap=Overlap(shared_keywords=["text-to-sql"]), why="", reachable="profile_only")
+    assert _relevant_asset([new_pii, old_sql], c)["title"] == "Production Text-to-SQL"
+
+
+async def test_card_open_to_lifts_matching_format_but_not_full_paper_first():
+    prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
+    cands, _, _ = await find_overlaps(prof, limit=10)
+    amine = next(c for c in cands if c.person.name == "Amine Mhedhbi")
+    from whoelse.brief import joint_work_brief
+    ids = [f["id"] for f in joint_work_brief(prof, amine)["formats"]]
+    assert ids[0] != "joint_paper"
+    assert "joint_benchmark" in ids[:3]  # his card says so
+
+
+async def test_hf_account_merges_into_person_and_orgs_are_dropped():
+    prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
+    cands, _, _ = await find_overlaps(prof, limit=12)
+    names = [c.person.name for c in cands]
+    assert "amine-io" not in names and "defog" not in names  # merged / org
+    amine = next(c for c in cands if c.person.name == "Amine Mhedhbi")
+    assert {a.kind for a in amine.person.assets} == {"paper", "dataset"}
+    assert amine.person.contact.huggingface == "https://huggingface.co/amine-io"
+    from whoelse.brief import outreach_skeleton
+    assert "https://huggingface.co/amine-io" in outreach_skeleton(prof, amine)["to_fallbacks"]
+
+
+def test_namesake_of_user_is_not_dropped_as_me():
+    me = Profile(name="Li Wei", ids={"openalex": "A102"})
+    pool = _Pool(me)
+    other = Person(name="Li Wei", ids={"openalex": "A101"})
+    pool.add(other, Asset(kind="paper", title="t", url="", source="openalex"))
+    assert pool.by_key
+
+
+async def test_403_with_retry_after_is_retried(tmp_path, monkeypatch):
+    reset_settings(Settings(home=tmp_path, fixtures_dir=None))
+    import whoelse.http as hmod
+    monkeypatch.setattr(hmod.asyncio, "sleep", lambda *_: _noop())
+    calls = {"n": 0}
+
+    def handler(req):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(403, headers={"Retry-After": "1", "X-RateLimit-Remaining": "40"})
+        return httpx.Response(200, json={"ok": True})
+    h = _http_with(handler)
+    assert await h.get_json("https://api.github.com/x") == {"ok": True}
+
+
+async def test_semaphores_survive_a_second_event_loop():
+    import asyncio
+    import threading
+    from whoelse.http import Http
+    h = Http()
+
+    async def one():
+        async with h._sem("https://api.openalex.org/x"):
+            return True
+    assert await one()
+    result = {}
+    t = threading.Thread(target=lambda: result.update(ok=asyncio.run(one())))
+    t.start(); t.join()
+    assert result["ok"] is True
+
+
+def test_headline_grammar():
+    from whoelse.server import _headline
+    prof = Profile(name="A B")
+    from whoelse.models import Candidate, Overlap
+    one = [Candidate(person=Person(name="C D"), score=1, overlap=Overlap(), why="", reachable="email")]
+    assert _headline(prof, one).startswith("1 person is working")

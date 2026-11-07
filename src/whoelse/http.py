@@ -55,9 +55,11 @@ class Http:
 
     def _sem(self, url: str) -> asyncio.Semaphore:
         host = urlsplit(url).netloc
-        if host not in self._sems:
-            self._sems[host] = asyncio.Semaphore(self.PER_HOST.get(host, 3))
-        return self._sems[host]
+        loop_id = id(asyncio.get_running_loop())
+        key = f"{loop_id}:{host}"
+        if key not in self._sems:
+            self._sems[key] = asyncio.Semaphore(self.PER_HOST.get(host, 3))
+        return self._sems[key]
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -125,7 +127,7 @@ class Http:
                 if r.status_code == 404:
                     return None
                 if r.status_code == 429 or r.status_code >= 500 or (
-                    r.status_code == 403 and r.headers.get("X-RateLimit-Remaining") == "0"
+                    r.status_code == 403 and (r.headers.get("X-RateLimit-Remaining") == "0" or r.headers.get("Retry-After"))
                 ):
                     last = f"HTTP {r.status_code}"
                     wait = _retry_after(r.headers.get("Retry-After"), attempt)

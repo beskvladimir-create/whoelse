@@ -179,7 +179,3 @@ async def works_search(query: str, *, since: date, limit: int = 50) -> list[dict
         fixture_name=f"openalex_works_search_{query.lower().replace(' ', '_')[:60]}",
     )
     return (data or {}).get("results", [])
-
-
-async def author_detail(author_id: str) -> dict[str, Any] | None:
-    return await http.get_json(f"{BASE}/authors/{author_id}", _params(), fixture_name=f"openalex_author_{author_id}")

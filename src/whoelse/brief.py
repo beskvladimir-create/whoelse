@@ -32,6 +32,22 @@ FORMATS = [
 ]
 
 
+def _relevant_asset(assets: list[Asset], c: Candidate) -> dict | None:
+    """The piece of work that actually overlaps, not merely the newest one."""
+    wanted = {k.lower() for k in c.overlap.shared_keywords} | {t.lower() for t in c.overlap.shared_topics}
+    if not assets:
+        return None
+
+    def hits(a: Asset) -> int:
+        bag = {k.lower() for k in a.keywords} | {t.lower() for t in a.topics} | set((a.title + " " + a.summary).lower().split())
+        return sum(1 for w in wanted if w in bag or any(w in x for x in bag))
+
+    best = max(assets, key=lambda a: (hits(a), a.date or date.min))
+    if hits(best) == 0:
+        best = max(assets, key=lambda a: a.date or date.min)
+    return {"kind": best.kind, "title": best.title, "url": best.url, "date": best.date.isoformat() if best.date else None, "stats": best.stats}
+
+
 def _top_assets(assets: list[Asset], n: int = 5) -> list[dict]:
     def key(a: Asset) -> tuple:
         s = a.stats
@@ -73,6 +89,12 @@ def joint_work_brief(me: Profile, c: Candidate) -> dict:
             s += 0.4
         if fit == 0:
             s -= 0.6
+        if p.card and p.card.open_to:
+            wants = " ".join(p.card.open_to).lower()
+            if label.lower() in wants or fid.replace("_", " ") in wants:
+                s += 0.7  # they said so themselves
+            elif fid == "joint_paper" and "co-author" in wants:
+                s += 0.3  # welcome, but a full paper still comes after a smaller first step
         ranked.append((round(s, 2), fid, label, effort, desc))
     ranked.sort(key=lambda x: -x[0])
 
@@ -108,9 +130,11 @@ def joint_work_brief(me: Profile, c: Candidate) -> dict:
 def outreach_skeleton(me: Profile, c: Candidate, format_id: str | None = None) -> dict:
     p = c.person
     fmt = next((f for f in FORMATS if f[0] == format_id), None) if format_id else None
-    mine = _top_assets(me.assets, 1)
-    theirs = _top_assets(p.assets, 1)
-    subject = f"{(fmt[1] if fmt else 'Working on the same thing')}: {', '.join(c.overlap.shared_topics[:1] or c.overlap.shared_keywords[:1])}".strip(": ")
+    mine = _relevant_asset(me.assets, c)
+    theirs = _relevant_asset(p.assets, c)
+    from .match import GENERIC
+    sharp = [k for k in c.overlap.shared_keywords if k not in GENERIC][:1] or c.overlap.shared_topics[:1]
+    subject = f"{(fmt[1] if fmt else 'Working on the same thing')}: {', '.join(sharp)}".strip(": ")
     to, to_prov = None, None
     if p.card and p.card.contact:
         to, to_prov = p.card.contact, "whoelse card on their own site"
@@ -119,12 +143,12 @@ def outreach_skeleton(me: Profile, c: Candidate, format_id: str | None = None) -
     return {
         "to": to,
         "to_provenance": to_prov,
-        "to_fallbacks": [u for u in (p.contact.website, p.contact.github, p.contact.linkedin, p.contact.orcid) if u],
+        "to_fallbacks": [u for u in (p.contact.website, p.contact.github, p.contact.huggingface, p.contact.linkedin, p.contact.orcid) if u],
         "subject": subject,
         "facts": {
-            "their_work": theirs[0] if theirs else None,
-            "my_work": mine[0] if mine else None,
-            "shared": c.overlap.shared_topics[:2] or c.overlap.shared_keywords[:3],
+            "their_work": theirs,
+            "my_work": mine,
+            "shared": [k for k in c.overlap.shared_keywords if k not in GENERIC][:3] or c.overlap.shared_topics[:2],
             "format": {"id": fmt[0], "label": fmt[1], "what": fmt[4]} if fmt else None,
             "they_have": c.overlap.they_have,
             "you_have": c.overlap.you_have,

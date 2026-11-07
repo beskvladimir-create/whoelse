@@ -6,7 +6,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import Any
 
-from ..http import SourceError, http
+from ..http import http
 from ..models import Contact
 
 BASE = "https://pub.orcid.org/v3.0"
@@ -93,18 +93,3 @@ async def person(orcid: str) -> Contact:
         if url:
             _classify(url, c)
     return c
-
-
-async def search_by_name(given: str, family: str, *, rows: int = 10) -> list[str]:
-    """Candidate ORCID iDs for a name. Caller must disambiguate."""
-    q = f'given-names:"{given}" AND family-name:"{family}"'
-    data = await http.get_json(
-        f"{BASE}/search/", {"q": q, "rows": rows}, headers={"Accept": "application/json"},
-        fixture_name=f"orcid_search_{given.lower()}_{family.lower()}",
-    )
-    out = []
-    for r in ((data or {}).get("result") or []):
-        oid = ((r.get("orcid-identifier") or {}).get("path") or "").strip()
-        if oid:
-            out.append(oid)
-    return out

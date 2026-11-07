@@ -15,7 +15,7 @@ except ImportError:  # mcp 1.x
 from . import __version__
 from .brief import FORMATS, joint_work_brief as _brief, outreach_skeleton as _skeleton
 from .match import find_overlaps as _find_overlaps
-from .models import Candidate, Person, Profile
+from .models import Candidate, Profile
 from .peers import add_peer as _add_peer, load_peers, remove_peer as _remove_peer, whats_new
 from .profile import build_profile, list_profiles, load_profile as _load_profile, profile_summary, save_profile
 from .sources import card as card_src
@@ -83,10 +83,10 @@ def _headline(prof: Profile, cands: list[Candidate]) -> str:
             if t not in GENERIC_TOPICS and t not in topics:
                 topics.append(t)
     topics = topics[:3]
-    line = f"{n} people are working on what {prof.name} is working on"
+    line = f"{n} {'person is' if n == 1 else 'people are'} working on what {prof.name} is working on"
     if topics:
         line += f" ({'; '.join(topics)})"
-    line += f". {reach} can be written to today"
+    line += f". {reach} {'can' if reach != 1 else 'can'} be written to today"
     if cards:
         line += f", {cards} of them published a whoelse card and said what they're open to"
     line += ". Each one comes with a reason, their recent work, and only the contacts they made public themselves."
@@ -99,7 +99,9 @@ def _lines(cands: list[Candidate]) -> list[str]:
         p = c.person
         where = f" ({p.affiliation})" if p.affiliation else ""
         reach = {"card": "card ✓", "email": "email", "website": "site/github", "profile_only": "profile only"}[c.reachable]
-        out.append(f"{i:>2}. {p.name}{where}: {c.why}. reach: {reach}")
+        ns = p.contact.provenance.get("namesake_of")
+        flag = f" [possible namesake of #{ns}]" if ns else ""
+        out.append(f"{i:>2}. {p.name}{where}: {c.why}. reach: {reach}{flag}")
     return out
 
 

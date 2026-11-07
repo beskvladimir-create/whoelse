@@ -41,3 +41,7 @@ Independent review found 25 items; 20 fixed, 2 rejected as non-bugs, 3 deferred.
 Robustness: any non-JSON 200 (SPA fallback pages at /.well-known/whoelse.json) is a SourceError; one candidate's broken site cannot take the result down; Retry-After dates parse; arXiv rate-limit text does not crash; per-host concurrency caps; tool errors reach the model as text (ToolError).
 
 Deferred: proposal to both card holders at once; PyPI release; Semantic Scholar as a second index.
+
+## 2026-11-07, verification round
+
+Second independent pass (verifying the fixes) found one serious regression I had introduced: arXiv coauthors were keyed by the paper's GitHub link and collapsed into one person. Fixed: the link stays on the paper; a person merges only on a second signal. Also fixed: outreach now cites the overlapping work, not the newest; affiliation match is token-based (no "MIT" ⊂ "Smith College"); same paper is a merge signal; a full name the person typed into their own GitHub/HF profile is a merge signal except for common family names; Hugging Face profile is a reach channel; card `open_to` lifts matching formats (full paper still after a smaller step); user's namesakes are not dropped as "me"; by-name GitHub lookups capped at 8 without a token; 403+Retry-After retried; semaphores per event loop; headline grammar; namesake flag in lines. 40 tests.

@@ -255,6 +255,9 @@ put("github_repos_apena-gamedev", [
 # David Graus: many namesakes -> must be skipped
 put("github_users_david_graus", {"total_count": 7, "items": [{"login": "dgraus"}, {"login": "davidgraus"}, {"login": "graus"}]})
 put("github_users_amine_mhedhbi", {"total_count": 0, "items": []})
+put("hf_user_amine-io", {"type": "user", "fullname": "Amine Mhedhbi", "user": "amine-io"})
+put("hf_user_defog", {"type": "org", "fullname": "Defog.ai", "user": "defog"})
+put("hf_user_sqlbot", None)
 put("github_users_nikhil_rao", {"total_count": 40, "items": [{"login": "nikhilrao"}, {"login": "nrao"}, {"login": "nikhil-rao"}]})
 put("github_users_li_wei", {"total_count": 900, "items": [{"login": "liwei"}, {"login": "li-wei"}, {"login": "weili"}]})
 

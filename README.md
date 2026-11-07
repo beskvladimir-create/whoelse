@@ -36,11 +36,12 @@ Ask your agent:
 > What could Amine and I do together?
 
 ```
- Fit  Format             Effort  Why
- 1.8  Joint benchmark    weeks   he has a routing benchmark, you have a production system to run on it
- 1.3  Comparison note    days    both of you have a recent paper on the same problem
- 1.1  Talk together      days    fastest way to put both names next to each other in public
+ fit  format             effort  what
+ 2.0  Joint benchmark    weeks   Pool your data or evaluation code into one benchmark with a leaderboard.
+ 1.4  Comparison note    days    A short joint write-up comparing your two approaches on the same problem.
+ 1.1  Talk together      days    A two-person talk or a podcast episode where you interview each other.
 ```
+plus what each side has, venues in common, and how to reach them, with the source of every contact.
 
 > Draft the message.
 
