@@ -29,3 +29,15 @@ MCPs: paper search (paper-search-mcp, arxiv-mcp-server, OpenArx), author profile
 **Not built yet.** Joint proposal to both sides when both have cards (needs an inbox convention); per-source rate budgeting UI; Semantic Scholar as a second paper source; a `reach` index (what search/LLMs answer for the user's name) — belongs to the larger product, not this tool.
 
 **Author.** Vladimir Beskorovainyi, sole author of all commits.
+
+## 2026-11-07, review round
+
+Independent review found 25 items; 20 fixed, 2 rejected as non-bugs, 3 deferred. Live measurements on the author's own topics drove three design changes:
+
+- **Reach is the bottleneck, not discovery.** Of 60 ORCID records behind the top text-to-SQL papers, 4 had a public email and 6 any URL. Of 60 fresh arXiv papers, 7 linked GitHub. So: a third channel, GitHub user search by full name, accepted only on a unique hit confirmed by repository subject (3 of 9 real names resolved; common names return 18–142 namesakes and are skipped).
+- **Generic terms must not carry a match.** "large language models" was shared by nearly everyone in the pool. Keywords are now IDF-weighted over the candidate pool, with a hard-coded generic set damped to 8%.
+- **Identity is guarded, not guessed.** Self-exclusion by ids, not name only; merge of records requires a second signal; organisations are detected on GitHub (type) and Hugging Face (overview) and dropped; an ORCID the user supplies is never stamped onto a namesake; CJK and accented names survive slug/norm.
+
+Robustness: any non-JSON 200 (SPA fallback pages at /.well-known/whoelse.json) is a SourceError; one candidate's broken site cannot take the result down; Retry-After dates parse; arXiv rate-limit text does not crash; per-host concurrency caps; tool errors reach the model as text (ToolError).
+
+Deferred: proposal to both card holders at once; PyPI release; Semantic Scholar as a second index.

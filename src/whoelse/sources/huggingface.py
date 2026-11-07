@@ -85,3 +85,12 @@ async def by_author(author: str, *, kind: str = "model", limit: int = 100) -> li
         {"author": author, "sort": "lastModified", "direction": -1, "limit": min(limit, 100), "full": "true"},
         fixture_name=f"hf_{kind}_author_{author}",
     )
+
+
+async def user_overview(name: str) -> dict[str, Any] | None:
+    """Public user overview: fullname, type ("user" | "org"). None if unknown."""
+    try:
+        data = await http.get_json(f"{BASE}/users/{name}/overview", fixture_name=f"hf_user_{name}")
+    except Exception:  # noqa: BLE001 - best-effort enrichment
+        return None
+    return data if isinstance(data, dict) else None

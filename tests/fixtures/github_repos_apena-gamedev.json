@@ -1,0 +1,19 @@
+[
+ {
+  "full_name": "apena-gamedev/unity-shooter",
+  "html_url": "https://github.com/apena-gamedev/unity-shooter",
+  "description": "A Unity shooter prototype",
+  "topics": [
+   "unity",
+   "game"
+  ],
+  "language": "C#",
+  "stargazers_count": 3,
+  "forks_count": 0,
+  "pushed_at": "2026-01-01T00:00:00Z",
+  "owner": {
+   "login": "apena-gamedev"
+  },
+  "fork": false
+ }
+]

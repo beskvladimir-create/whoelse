@@ -7,7 +7,7 @@ whoelse finds them. It reads your papers, your repos and your models, finds the 
 Runs inside Claude, Cursor, Codex or any MCP client. No sign-up, no profile to fill in, no server. Free.
 
 ```bash
-uvx whoelse
+pip install git+https://github.com/beskvladimir-create/whoelse
 ```
 
 ---
@@ -52,13 +52,15 @@ Three directions at once, then merged into people:
 
 | direction | source | what it catches |
 |---|---|---|
-| papers | OpenAlex keywords and topics, arXiv | who published on your exact problem in the last 24 months |
+| papers | OpenAlex keywords and topics; arXiv for preprints OpenAlex hasn't indexed yet | who published on your exact problem in the last 24 months |
 | code | GitHub repository search | who is building it |
 | models and data | Hugging Face Hub | who released weights or a dataset (quantisations and repacks are filtered out) |
 
-A GitHub login, a Hugging Face handle and an OpenAlex author with the same name collapse into one person. Authors who link their own code in an arXiv comment are joined automatically, including you: give whoelse your name and it usually finds your handles itself.
+A GitHub login, a Hugging Face account and an OpenAlex author become one person only when a second signal says so: the same affiliation, a link from their paper to that account, the same website. A shared name alone keeps them apart, flagged as possible namesakes, so one person's email never lands next to another's work. Organisations (a company's GitHub, a lab's Hugging Face) are recognised and left out. Authors who link their own code in an arXiv comment are joined automatically, including you: give whoelse your name and it usually finds your handles itself.
 
 If several people share your name, whoelse does not guess. It shows you the namesakes and asks for an ORCID or an affiliation.
+
+A third reach channel, GitHub user search by full name, is used only when it returns exactly one account whose repositories are about the same subject; otherwise it is ignored. On real data it finds roughly one in three researchers who left nothing on ORCID.
 
 ## How it reaches them
 
@@ -85,7 +87,7 @@ Put this on your own site at `/.well-known/whoelse.json`:
 }
 ```
 
-Anyone running whoelse now sees you as **connected**: reachable, and open to exactly what you said. When both sides have a card, both agents can put the same proposal to both people. No registry, no account, no central anything. The web is the directory. `make_card` writes yours.
+Anyone running whoelse now sees you as **connected**: reachable, and open to exactly what you said. When both sides have a card, both of you are one `joint_work_brief` away from the same proposal; sending it to both at once is on the roadmap. No registry, no account, no central anything. The web is the directory. `make_card` writes yours.
 
 ## Your people
 
@@ -106,15 +108,15 @@ Once you've decided someone is one of yours (`add_peer`), whoelse watches what t
 ## Install
 
 ```bash
-uvx whoelse          # or: pip install whoelse
+pip install git+https://github.com/beskvladimir-create/whoelse      # PyPI release to follow
 ```
 
-Claude Code: `claude mcp add whoelse -- uvx whoelse`
+Claude Code: `claude mcp add whoelse -- whoelse`
 
 Claude Desktop, Cursor, Codex and others, in the MCP config:
 
 ```json
-{ "mcpServers": { "whoelse": { "command": "uvx", "args": ["whoelse"] } } }
+{ "mcpServers": { "whoelse": { "command": "whoelse" } } }
 ```
 
 Optional environment:

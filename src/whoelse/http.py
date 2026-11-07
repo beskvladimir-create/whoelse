@@ -6,10 +6,12 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import re
 import time
-from pathlib import Path
+from email.utils import parsedate_to_datetime
+from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 import httpx
 
@@ -20,16 +22,42 @@ class SourceError(RuntimeError):
     """A data source could not answer. Carries enough to tell the user what happened."""
 
 
-def _cache_key(url: str, params: dict[str, Any] | None, headers_sig: str) -> str:
-    raw = url + "?" + urlencode(sorted((params or {}).items()), doseq=True) + "|" + headers_sig
+def _cache_key(url: str, params: dict[str, Any] | None, headers_sig: str, accept: str = "") -> str:
+    raw = url + "?" + urlencode(sorted((params or {}).items()), doseq=True) + "|" + headers_sig + "|" + accept
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+def _safe_name(name: str) -> str:
+    return re.sub(r"[^\w.-]", "_", name)[:150]
+
+
+def _retry_after(value: str | None, attempt: int) -> float:
+    if not value:
+        return float(2 ** attempt)
+    try:
+        return min(float(value), 60.0)
+    except ValueError:
+        try:
+            dt = parsedate_to_datetime(value)
+            return max(1.0, min((dt - datetime.now(timezone.utc)).total_seconds(), 60.0))
+        except (TypeError, ValueError):
+            return float(2 ** attempt)
+
+
 class Http:
+    # Polite concurrency per host: public APIs are shared with everyone.
+    PER_HOST = {"api.github.com": 2, "api.openalex.org": 4, "pub.orcid.org": 4, "export.arxiv.org": 1, "huggingface.co": 4}
+
     def __init__(self, *, timeout: float = 30.0) -> None:
         self._client: httpx.AsyncClient | None = None
         self._timeout = timeout
-        self._lock = asyncio.Lock()
+        self._sems: dict[str, asyncio.Semaphore] = {}
+
+    def _sem(self, url: str) -> asyncio.Semaphore:
+        host = urlsplit(url).netloc
+        if host not in self._sems:
+            self._sems[host] = asyncio.Semaphore(self.PER_HOST.get(host, 3))
+        return self._sems[host]
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -45,21 +73,6 @@ class Http:
             await self._client.aclose()
             self._client = None
 
-    def _fixture(self, url: str, params: dict[str, Any] | None) -> Any | None:
-        fx = settings().fixtures_dir
-        if not fx:
-            return None
-        key = _cache_key(url, params, "")
-        path = fx / f"{key}.json"
-        if path.exists():
-            return json.loads(path.read_text())
-        index = fx / "index.json"
-        if index.exists():
-            # index.json maps a human-readable key ("openalex:works:text-to-sql") to a file name.
-            # Sources register their lookups by passing fixture_name; see get_json.
-            return None
-        return None
-
     async def get_json(
         self,
         url: str,
@@ -71,26 +84,28 @@ class Http:
     ) -> Any:
         """GET and parse JSON (or raw text when accept != json). Cached on disk by URL+params."""
         s = settings()
+        want_json = accept == "application/json"
         if s.fixtures_dir:
             if fixture_name:
-                p = s.fixtures_dir / f"{fixture_name}.json"
+                p = s.fixtures_dir / f"{_safe_name(fixture_name)}.json"
                 if p.exists():
                     data = json.loads(p.read_text())
-                    return data.get("__text__", data) if accept != "application/json" else data
-            fx = self._fixture(url, params)
-            if fx is not None:
-                return fx
+                    if isinstance(data, dict) and "__text__" in data:
+                        return data["__text__"]
+                    return data
             raise SourceError(f"offline: no fixture for {fixture_name or url}")
 
         headers_sig = (headers or {}).get("Authorization", "")[:8]
-        key = _cache_key(url, params, headers_sig)
+        key = _cache_key(url, params, headers_sig, accept)
         cache_path = s.cache_dir / f"{key}.json"
         if cache_path.exists():
             age_h = (time.time() - cache_path.stat().st_mtime) / 3600
             if age_h < s.cache_hours:
                 try:
                     cached = json.loads(cache_path.read_text())
-                    return cached.get("__text__", cached) if accept != "application/json" else cached
+                    if isinstance(cached, dict) and "__text__" in cached:
+                        return cached["__text__"]
+                    return cached
                 except json.JSONDecodeError:
                     pass
 
@@ -98,28 +113,43 @@ class Http:
         req_headers = {"Accept": accept}
         if headers:
             req_headers.update(headers)
-        last_exc: Exception | None = None
-        for attempt in range(4):
-            try:
-                r = await client.get(url, params=params, headers=req_headers)
-                if r.status_code == 429 or r.status_code >= 500:
-                    wait = float(r.headers.get("Retry-After", 2 ** attempt))
-                    await asyncio.sleep(min(wait, 30))
+        last: str = "no attempt"
+        async with self._sem(url):
+            for attempt in range(4):
+                try:
+                    r = await client.get(url, params=params, headers=req_headers)
+                except httpx.TransportError as e:
+                    last = f"transport error: {e}"
+                    await asyncio.sleep(2 ** attempt)
                     continue
                 if r.status_code == 404:
                     return None
-                r.raise_for_status()
-                if accept == "application/json":
-                    data = r.json()
+                if r.status_code == 429 or r.status_code >= 500 or (
+                    r.status_code == 403 and r.headers.get("X-RateLimit-Remaining") == "0"
+                ):
+                    last = f"HTTP {r.status_code}"
+                    wait = _retry_after(r.headers.get("Retry-After"), attempt)
+                    reset = r.headers.get("X-RateLimit-Reset")
+                    if reset and r.status_code == 403:
+                        try:
+                            wait = max(wait, min(float(reset) - time.time(), 60.0))
+                        except ValueError:
+                            pass
+                    await asyncio.sleep(wait)
+                    continue
+                if r.status_code >= 400:
+                    raise SourceError(f"{url}: HTTP {r.status_code}")
+                if want_json:
+                    try:
+                        data = r.json()
+                    except ValueError as e:
+                        raise SourceError(f"{url}: response is not JSON ({e})")
                     cache_path.write_text(json.dumps(data))
                     return data
                 text = r.text
                 cache_path.write_text(json.dumps({"__text__": text}))
                 return text
-            except (httpx.TransportError, httpx.HTTPStatusError) as e:
-                last_exc = e
-                await asyncio.sleep(2 ** attempt)
-        raise SourceError(f"{url}: {last_exc}")
+        raise SourceError(f"{url}: gave up after 4 attempts ({last})")
 
 
 http = Http()

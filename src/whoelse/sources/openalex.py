@@ -67,7 +67,7 @@ def work_to_asset(w: dict[str, Any]) -> Asset:
     loc = w.get("best_oa_location") or w.get("primary_location") or {}
     url = (loc.get("landing_page_url") or w.get("doi") or w.get("id") or "").strip()
     venue = ((w.get("primary_location") or {}).get("source") or {}).get("display_name") or ""
-    topics = w.get("topics") or []
+    topics = [t for t in (w.get("topics") or []) if isinstance(t, dict) and t.get("id") and t.get("display_name")]
     return Asset(
         kind="paper",
         title=w.get("display_name") or "(untitled)",
@@ -77,20 +77,23 @@ def work_to_asset(w: dict[str, Any]) -> Asset:
         summary=abstract_from_inverted(w.get("abstract_inverted_index")),
         keywords=[k.get("display_name", "").lower() for k in (w.get("keywords") or []) if k.get("display_name")],
         keyword_ids=[(k.get("id") or "").split("openalex.org/")[-1] for k in (w.get("keywords") or []) if k.get("id")],
-        topics=[t.get("display_name", "") for t in topics if t.get("display_name")],
-        topic_ids=[_short_id(t.get("id")) for t in topics if t.get("id")],
+        topics=[t["display_name"] for t in topics],
+        topic_ids=[_short_id(t["id"]) for t in topics],
         stats={"citations": int(w.get("cited_by_count") or 0)},
-        coauthors=[a.get("author", {}).get("display_name", "") for a in (w.get("authorships") or [])],
+        coauthors=[((a or {}).get("author") or {}).get("display_name", "") for a in (w.get("authorships") or []) if isinstance(a, dict)],
         extra={"venue": venue, "openalex": _short_id(w.get("id")), "doi": w.get("doi") or ""},
     )
 
 
 def authorship_to_person(a: dict[str, Any]) -> Person | None:
+    if not isinstance(a, dict):
+        return None
     au = a.get("author") or {}
-    name = au.get("display_name")
+    name = au.get("display_name") if isinstance(au, dict) else None
     if not name:
         return None
-    inst = (a.get("institutions") or [{}])[0] if a.get("institutions") else {}
+    insts = [i for i in (a.get("institutions") or []) if isinstance(i, dict)]
+    inst = insts[0] if insts else {}
     ids: dict[str, str] = {}
     if au.get("id"):
         ids["openalex"] = _short_id(au["id"])

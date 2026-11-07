@@ -60,8 +60,6 @@ def joint_work_brief(me: Profile, c: Candidate) -> dict:
         # reward complementarity: formats that use what only one side has
         uses_gap = any(k in c.overlap.they_have or k in c.overlap.you_have for k in needs)
         s = fit + (0.5 if uses_gap else 0.0) + (0.3 if effort == "days" else 0.1 if effort == "weeks" else 0.0)
-        if c.overlap.already_coauthors and fid in ("joint_paper", "compare_note"):
-            s += 0.4
         ranked.append((round(s, 2), fid, label, effort, desc))
     ranked.sort(key=lambda x: -x[0])
 
@@ -100,8 +98,14 @@ def outreach_skeleton(me: Profile, c: Candidate, format_id: str | None = None) -
     mine = _top_assets(me.assets, 1)
     theirs = _top_assets(p.assets, 1)
     subject = f"{(fmt[1] if fmt else 'Working on the same thing')}: {', '.join(c.overlap.shared_topics[:1] or c.overlap.shared_keywords[:1])}".strip(": ")
+    to, to_prov = None, None
+    if p.card and p.card.contact:
+        to, to_prov = p.card.contact, "whoelse card on their own site"
+    elif p.contact.email:
+        to, to_prov = p.contact.email, p.contact.provenance.get("email", "")
     return {
-        "to": p.contact.email or p.card.contact if p.card else p.contact.email,
+        "to": to,
+        "to_provenance": to_prov,
         "to_fallbacks": [u for u in (p.contact.website, p.contact.github, p.contact.linkedin, p.contact.orcid) if u],
         "subject": subject,
         "facts": {

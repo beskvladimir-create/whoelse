@@ -140,6 +140,7 @@ put("openalex_authors_li_wei", {"results": [
 ]})
 put("openalex_author_orcid_0000-0002-2222-3333", {"id": "https://openalex.org/A5000000102", "display_name": "Li Wei", "orcid": "https://orcid.org/0000-0002-2222-3333", "works_count": 12, "last_known_institutions": [{"display_name": "Tsinghua University", "country_code": "CN"}]})
 put("openalex_works_author_A5000000102", {"results": []})
+put("openalex_author_orcid_0000-0000-0000-9999", None)  # 404 from OpenAlex
 put("arxiv_au_li_wei", {"__text__": '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'})
 put("orcid_person_0000-0002-2222-3333", {"emails": {"email": []}, "researcher-urls": {"researcher-url": []}})
 put("orcid_person_0000-0001-1111-2222", {"emails": {"email": [{"email": "nrao@iitm.ac.in", "visibility": "public"}]}, "researcher-urls": {"researcher-url": []}})
@@ -167,6 +168,25 @@ put(
 </feed>"""
     },
 )
+
+# --- arXiv keyword search (new preprints ahead of OpenAlex)
+put("arxiv_all-text-to-sql", {"__text__": """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
+  <entry>
+    <id>http://arxiv.org/abs/2611.00001v1</id>
+    <published>2026-11-02T00:00:00Z</published>
+    <title>Tiny-SQL: a 1B model for enterprise text-to-SQL</title>
+    <summary>We train a 1B model for text-to-SQL on enterprise schemas.</summary>
+    <arxiv:comment>Code: https://github.com/ppapotti/tiny-sql</arxiv:comment>
+    <author><name>Paolo Papotti</name></author><author><name>Giulia Rossi</name></author>
+    <category term="cs.DB"/>
+  </entry>
+</feed>"""})
+put("arxiv_all-open-weight_models", {"__text__": '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'})
+put("arxiv_all-schema_linking", {"__text__": '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'})
+put("arxiv_all-citizen_appeals", {"__text__": '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'})
+put("arxiv_all-text_classification", {"__text__": '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'})
+put("arxiv_all-public_administration", {"__text__": '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'})
 
 # --- ORCID
 put(
@@ -219,6 +239,23 @@ put("github_search_text_classification", {"items": []})
 put("github_user_ppapotti", {"login": "ppapotti", "name": "Paolo Papotti", "html_url": "https://github.com/ppapotti", "email": None, "blog": "", "company": "EURECOM", "location": "Sophia Antipolis"})
 put("github_user_sqlbot", {"login": "sqlbot", "name": None, "html_url": "https://github.com/sqlbot", "email": "hi@sqlbot.dev", "blog": "https://sqlbot.dev", "company": None, "location": None})
 put("card_sqlbot.dev", {})
+# GitHub user search by full name (the third reach channel)
+put("github_users_paolo_papotti", {"total_count": 1, "items": [{"login": "ppapotti"}]})
+put("github_repos_ppapotti", [
+    {"full_name": "ppapotti/think2sql", "html_url": "https://github.com/ppapotti/think2sql", "description": "Code for Think2SQL: reasoning for text-to-SQL",
+     "topics": ["text-to-sql"], "language": "Python", "stargazers_count": 210, "forks_count": 20, "pushed_at": "2026-05-01T00:00:00Z", "owner": {"login": "ppapotti"}, "fork": False},
+])
+# Alejandro Peña: unique GitHub hit but the repos are about something else -> must be rejected
+put("github_users_alejandro_peña", {"total_count": 1, "items": [{"login": "apena-gamedev"}]})
+put("github_repos_apena-gamedev", [
+    {"full_name": "apena-gamedev/unity-shooter", "html_url": "https://github.com/apena-gamedev/unity-shooter", "description": "A Unity shooter prototype",
+     "topics": ["unity", "game"], "language": "C#", "stargazers_count": 3, "forks_count": 0, "pushed_at": "2026-01-01T00:00:00Z", "owner": {"login": "apena-gamedev"}, "fork": False},
+])
+# David Graus: many namesakes -> must be skipped
+put("github_users_david_graus", {"total_count": 7, "items": [{"login": "dgraus"}, {"login": "davidgraus"}, {"login": "graus"}]})
+put("github_users_amine_mhedhbi", {"total_count": 0, "items": []})
+put("github_users_nikhil_rao", {"total_count": 40, "items": [{"login": "nikhilrao"}, {"login": "nrao"}, {"login": "nikhil-rao"}]})
+put("github_users_li_wei", {"total_count": 900, "items": [{"login": "liwei"}, {"login": "li-wei"}, {"login": "weili"}]})
 
 # --- Hugging Face
 put("hf_model_search_text-to-sql", [
@@ -231,4 +268,12 @@ for q in ("schema_linking", "citizen_appeals", "public_administration", "text_cl
     put(f"hf_model_search_{q}", [])
     put(f"hf_dataset_search_{q}", [])
 
+# empty answers for the remaining discovery queries so the offline demo is silent
+EMPTY_FEED = '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'
+for q in ("nl2sql", "anonymization", "qwen", "pii"):
+    put(f"openalex_works_search_{q}", {"results": []})
+    put(f"github_search_{q}", {"items": []})
+    put(f"hf_model_search_{q}", [])
+    put(f"hf_dataset_search_{q}", [])
+    put(f"arxiv_all-{q}", {"__text__": EMPTY_FEED})
 print("fixtures:", len(list(FX.glob("*.json"))))

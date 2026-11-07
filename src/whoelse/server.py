@@ -7,8 +7,10 @@ from typing import Any
 
 try:  # mcp >= 2
     from mcp.server.mcpserver import MCPServer as _Server
+    from mcp.server.mcpserver.exceptions import ToolError
 except ImportError:  # mcp 1.x
     from mcp.server.fastmcp import FastMCP as _Server  # type: ignore[no-redef]
+    from mcp.server.fastmcp.exceptions import ToolError  # type: ignore[no-redef]
 
 from . import __version__
 from .brief import FORMATS, joint_work_brief as _brief, outreach_skeleton as _skeleton
@@ -66,7 +68,16 @@ def _headline(prof: Profile, cands: list[Candidate]) -> str:
         return f"Nobody with recent public work overlapping {prof.name}'s came up. Try a longer recent_months, or add a GitHub/Hugging Face handle to the profile."
     reach = sum(1 for c in cands if c.reachable in ("card", "email"))
     cards = sum(1 for c in cands if c.reachable == "card")
-    topics = sorted({t for c in cands for t in c.overlap.shared_topics[:1]})[:3]
+    from .match import GENERIC, GENERIC_TOPICS
+    topics = []
+    for c in cands:
+        for k in c.overlap.shared_keywords[:2]:
+            if k not in GENERIC and k not in topics:
+                topics.append(k)
+        for t in c.overlap.shared_topics[:1]:
+            if t not in GENERIC_TOPICS and t not in topics:
+                topics.append(t)
+    topics = topics[:3]
     line = f"{n} people are working on what {prof.name} is working on"
     if topics:
         line += f" ({'; '.join(topics)})"
@@ -90,7 +101,7 @@ def _lines(cands: list[Candidate]) -> list[str]:
 def _need_profile(name: str) -> Profile:
     prof = _load_profile(name)
     if not prof:
-        raise ValueError(f"No profile for '{name}'. Call load_profile first. Known: {list_profiles()}")
+        raise ToolError(f"No profile for '{name}'. Call load_profile first. Known: {list_profiles()}")
     return prof
 
 
@@ -98,9 +109,9 @@ def _need_candidate(name: str, index: int) -> tuple[Profile, Candidate]:
     prof = _need_profile(name)
     cands = _last.get(prof.name) or []
     if not cands:
-        raise ValueError("No candidates yet for this profile. Call find_overlaps first.")
+        raise ToolError("No candidates yet for this profile. Call find_overlaps first.")
     if not 0 <= index < len(cands):
-        raise ValueError(f"candidate_index must be 0..{len(cands) - 1}")
+        raise ToolError(f"candidate_index must be 0..{len(cands) - 1}")
     return prof, cands[index]
 
 
@@ -143,7 +154,7 @@ async def find_overlaps(
     or models overlap the user's profile, with whatever contact they made public and a one-line
     reason for each. Candidates get an index for joint_work_brief / draft_outreach."""
     prof = _need_profile(name)
-    cands = await _find_overlaps(
+    cands, source_errors = await _find_overlaps(
         prof, limit=limit, recent_months=recent_months, include_code=include_code, include_models=include_models
     )
     _last[prof.name] = cands
@@ -155,7 +166,7 @@ async def find_overlaps(
         "count": len(cands),
         "connected": connected,
         "candidates": [_cand_view(i, c) for i, c in enumerate(cands)],
-        "source_errors": getattr(_find_overlaps, "last_errors", []),
+        "source_errors": source_errors,
         "note": "Index refers to this list. Contacts are only those the person published; see contact_provenance.",
     }
 
@@ -176,7 +187,7 @@ async def draft_outreach(name: str, candidate_index: int, format_id: str | None 
     prof, c = _need_candidate(name, candidate_index)
     valid = {f[0] for f in FORMATS}
     if format_id and format_id not in valid:
-        raise ValueError(f"format_id must be one of {sorted(valid)}")
+        raise ToolError(f"format_id must be one of {sorted(valid)}")
     return _skeleton(prof, c, format_id)
 
 

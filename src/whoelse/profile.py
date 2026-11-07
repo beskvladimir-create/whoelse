@@ -4,9 +4,11 @@ topics and keywords with weights. Used both for the user and for candidates."""
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import math
 import re
+import unicodedata
 from datetime import date
 from typing import Iterable
 
@@ -22,11 +24,18 @@ STOP_KEYWORDS = {
     "text-generation", "text-generation-inference", "license", "arxiv", "dataset", "model",
 }
 
-_slug_re = re.compile(r"[^a-z0-9]+")
+_slug_re = re.compile(r"[^\w]+", re.UNICODE)
+
+
+def fold(name: str) -> str:
+    """Case-fold and strip accents so 'Peña' == 'Pena'; keeps non-Latin scripts intact."""
+    nfkd = unicodedata.normalize("NFKD", name)
+    return "".join(ch for ch in nfkd if not unicodedata.combining(ch)).casefold()
 
 
 def slug(name: str) -> str:
-    return _slug_re.sub("-", name.lower()).strip("-")
+    out = _slug_re.sub("-", fold(name)).strip("-")
+    return out or hashlib.sha1(name.encode()).hexdigest()[:12]
 
 
 def _recency_weight(d: date | None, today: date | None = None) -> float:
@@ -44,21 +53,43 @@ def _attention(a: Asset) -> float:
     return 1.0 + math.log1p(n)
 
 
+def _union(a: list[str], b: list[str]) -> list[str]:
+    seen = set()
+    out = []
+    for x in a + b:
+        if x and x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+
 def dedupe_assets(assets: Iterable[Asset]) -> list[Asset]:
+    """Same work from two sources becomes one asset carrying the union of both. The OpenAlex
+    copy is preferred as the base (it has topics and keyword ids), whatever order they arrived in."""
+    order = {"openalex": 0, "arxiv": 1, "github": 2, "huggingface": 3}
     seen: dict[str, Asset] = {}
-    for a in assets:
-        key = re.sub(r"\W+", " ", a.title.lower()).strip()[:80]
+    for a in sorted(assets, key=lambda x: order.get(x.source, 9)):
+        key = re.sub(r"\W+", " ", fold(a.title)).strip()[:80]
         if key in seen:
-            # keep the richer one, merge stats
             keep = seen[key]
             for k, v in a.stats.items():
                 keep.stats[k] = max(keep.stats.get(k, 0), v)
-            if not keep.topics and a.topics:
-                keep.topics, keep.topic_ids = a.topics, a.topic_ids
+            if a.topics and len(a.topics) == len(a.topic_ids):
+                pairs = dict(zip(keep.topic_ids, keep.topics))
+                pairs.update(zip(a.topic_ids, a.topics))
+                keep.topic_ids, keep.topics = list(pairs), list(pairs.values())
+            keep.keywords = _union(keep.keywords, a.keywords)
+            keep.keyword_ids = _union(keep.keyword_ids, a.keyword_ids)
+            keep.coauthors = _union(keep.coauthors, a.coauthors)
+            for k, v in a.extra.items():
+                if v and not keep.extra.get(k):
+                    keep.extra[k] = v
             if not keep.summary and a.summary:
                 keep.summary = a.summary
+            if keep.date is None and a.date:
+                keep.date = a.date
             continue
-        seen[key] = a
+        seen[key] = a.model_copy(deep=True)
     return list(seen.values())
 
 
@@ -107,6 +138,12 @@ async def _openalex_author(name: str, orcid_id: str | None, affiliation_hint: st
         au = await openalex.author_by_orcid(orcid_id)
         if au:
             return au, []
+        # Not in OpenAlex under that ORCID. Only accept a name hit that carries the same ORCID.
+        results = await openalex.search_authors(name)
+        for r in results:
+            if (r.get("orcid") or "").rsplit("/", 1)[-1] == orcid_id:
+                return r, []
+        return None, [{"note": f"ORCID {orcid_id} is not linked to any OpenAlex author with this name"}]
     results = await openalex.search_authors(name)
     if not results:
         return None, []
@@ -137,7 +174,7 @@ async def _openalex_author(name: str, orcid_id: str | None, affiliation_hint: st
 
 
 def _norm(s: str) -> str:
-    return re.sub(r"[^a-z]", "", s.lower())
+    return re.sub(r"[^\w]", "", fold(s), flags=re.UNICODE)
 
 
 async def build_profile(
@@ -156,6 +193,9 @@ async def build_profile(
     async def do_openalex() -> None:
         try:
             au, namesakes = await _openalex_author(name, orcid_id, affiliation_hint)
+            if namesakes and "note" in namesakes[0]:
+                prof.notes.append(namesakes[0]["note"] + "; profile built from arXiv/GitHub/HF only.")
+                return
             if namesakes:
                 prof.ambiguous = namesakes
                 prof.notes.append(
@@ -188,11 +228,16 @@ async def build_profile(
             prof.notes.append(f"arXiv unavailable: {e}")
 
     async def do_github() -> None:
-        nonlocal github_login
         if not github_login:
             return
         try:
             u = await github.user(github_login)
+            if u and u.ids.get("github_org"):
+                prof.notes.append(f"GitHub '{github_login}' is an organisation; its repos are included but it is not treated as your identity.")
+                repos = await github.user_repos(github_login)
+                assets.extend(repos)
+                prof.sources_used.append(f"github org {github_login} ({len(repos)} repos)")
+                return
             if u:
                 prof.ids["github"] = github_login
                 if u.contact.email and not prof.contact.email:
@@ -209,7 +254,6 @@ async def build_profile(
             prof.notes.append(f"GitHub unavailable: {e}")
 
     async def do_hf() -> None:
-        nonlocal huggingface_user
         if not huggingface_user:
             return
         try:
@@ -235,11 +279,20 @@ async def build_profile(
             for h in filter(None, a.extra.get("hf_handles", "").split(",")):
                 hf_votes[h] = hf_votes.get(h, 0) + 1
         if not github_login and gh_votes:
-            github_login = max(gh_votes, key=gh_votes.get)
-            prof.notes.append(f"GitHub login '{github_login}' taken from the user's own arXiv comments.")
+            for cand, votes in sorted(gh_votes.items(), key=lambda x: -x[1]):
+                try:
+                    u = await github.user(cand)
+                except SourceError:
+                    u = None
+                if not u or u.ids.get("github_org"):
+                    continue  # an organisation's repo, not the person's own account
+                if votes >= 2 or _norm(u.name) == _norm(name):
+                    github_login = cand
+                    prof.notes.append(f"GitHub login '{cand}' taken from the user's own arXiv links.")
+                    break
         if not huggingface_user and hf_votes:
             huggingface_user = max(hf_votes, key=hf_votes.get)
-            prof.notes.append(f"Hugging Face user '{huggingface_user}' taken from the user's own arXiv comments.")
+            prof.notes.append(f"Hugging Face account '{huggingface_user}' taken from the user's own arXiv links.")
 
     await asyncio.gather(do_github(), do_hf())
 

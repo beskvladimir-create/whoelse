@@ -1,0 +1,3 @@
+{
+ "__text__": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\" xmlns:arxiv=\"http://arxiv.org/schemas/atom\">\n  <entry>\n    <id>http://arxiv.org/abs/2611.00001v1</id>\n    <published>2026-11-02T00:00:00Z</published>\n    <title>Tiny-SQL: a 1B model for enterprise text-to-SQL</title>\n    <summary>We train a 1B model for text-to-SQL on enterprise schemas.</summary>\n    <arxiv:comment>Code: https://github.com/ppapotti/tiny-sql</arxiv:comment>\n    <author><name>Paolo Papotti</name></author><author><name>Giulia Rossi</name></author>\n    <category term=\"cs.DB\"/>\n  </entry>\n</feed>"
+}

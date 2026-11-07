@@ -49,7 +49,7 @@ async def test_build_profile_merges_sources():
 
 async def test_find_overlaps_ranks_and_enriches():
     prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
-    cands = await find_overlaps(prof, limit=10)
+    cands, _ = await find_overlaps(prof, limit=10)
     names = [c.person.name for c in cands]
     # I am not my own candidate
     assert "Vladimir Beskorovainyi" not in names
@@ -75,7 +75,7 @@ async def test_find_overlaps_ranks_and_enriches():
 
 async def test_brief_and_outreach():
     prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
-    cands = await find_overlaps(prof, limit=10)
+    cands, _ = await find_overlaps(prof, limit=10)
     amine = next(c for c in cands if c.person.name == "Amine Mhedhbi")
     brief = joint_work_brief(prof, amine)
     assert brief["them"]["card"]["contact"] == "amine.mhedhbi@polymtl.ca"
@@ -97,7 +97,7 @@ async def test_server_tools_end_to_end():
     assert brief["them"]["name"] == "Amine Mhedhbi"
     draft = await server.draft_outreach("Vladimir Beskorovainyi", idx, "compare_note")
     assert draft["subject"].startswith("Comparison note")
-    with pytest.raises(ValueError):
+    with pytest.raises(Exception):
         await server.draft_outreach("Vladimir Beskorovainyi", idx, "spam_everyone")
     peer = await server.add_peer("Vladimir Beskorovainyi", idx, "SQL routing")
     assert peer["name"] == "Amine Mhedhbi"
@@ -128,8 +128,34 @@ async def test_namesakes_are_not_guessed():
 async def test_keyword_walk_finds_people_topics_miss():
     prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
     assert "keywords/text-to-sql" in prof.keyword_ids
-    cands = await find_overlaps(prof, limit=15)
+    cands, _ = await find_overlaps(prof, limit=15)
     names = [c.person.name for c in cands]
     assert "Nikhil Rao" in names  # only reachable through the keyword filter
     rao = next(c for c in cands if c.person.name == "Nikhil Rao")
     assert rao.reachable == "email" and rao.person.contact.provenance["email"] == "orcid public email"
+
+
+async def test_github_by_name_requires_unique_hit_and_subject_match():
+    prof = await build_profile("Vladimir Beskorovainyi", github_login="besk-tech")
+    cands, errors = await find_overlaps(prof, limit=15)
+    by = {c.person.name: c for c in cands}
+    # Papotti: unique hit + repo about text-to-SQL -> accepted, provenance says how
+    assert by["Paolo Papotti"].person.ids.get("github") == "ppapotti"
+    assert "confirmed by repo subject" in by["Paolo Papotti"].person.contact.provenance["github"]
+    # Peña: unique hit but repos are games -> rejected, stays profile_only
+    assert by["Alejandro Peña"].person.ids.get("github") is None
+    assert by["Alejandro Peña"].reachable == "profile_only"
+    # Graus: 7 namesakes -> skipped; still reachable via his ORCID website
+    assert by["David Graus"].person.ids.get("github") is None
+    assert by["David Graus"].reachable == "website"
+    assert errors == [] or all("fixture" in e for e in errors)
+
+
+def test_generic_keywords_are_damped():
+    from whoelse.match import _weighted_overlap
+    a = {"large language models": 5.0, "text-to-sql": 1.0}
+    b = {"large language models": 5.0, "text-to-sql": 1.0}
+    c = {"large language models": 5.0, "image segmentation": 1.0}
+    s_same, _ = _weighted_overlap(a, b)
+    s_generic_only, _ = _weighted_overlap(a, c)
+    assert s_same > 2 * s_generic_only

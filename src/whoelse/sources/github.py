@@ -3,6 +3,7 @@ We read: repository search, a user's public profile (name, blog, public email) a
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from typing import Any
 
@@ -72,13 +73,27 @@ async def user(login: str) -> Person | None:
             blog = "https://" + blog
         c.website = blog
         c.provenance["website"] = "github profile blog field"
-    return Person(
+    p = Person(
         name=data.get("name") or login,
         ids={"github": login},
         affiliation=(data.get("company") or "").lstrip("@"),
-        country=data.get("location") or "",
         contact=c,
     )
+    if data.get("location"):
+        p.contact.other.append(f"location: {data['location']}")
+    if (data.get("type") or "") == "Organization":
+        p.ids["github_org"] = login
+    return p
+
+
+_LOGIN = re.compile(r"github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)")
+
+
+def login_from_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    m = _LOGIN.search(url)
+    return m.group(1) if m else None
 
 
 async def user_repos(login: str, *, limit: int = 100) -> list[Asset]:
@@ -89,3 +104,18 @@ async def user_repos(login: str, *, limit: int = 100) -> list[Asset]:
         fixture_name=f"github_repos_{login}",
     )
     return [repo_to_asset(r) for r in (data or []) if not r.get("fork")]
+
+
+async def search_users(full_name: str, *, limit: int = 3) -> list[str]:
+    """Logins whose profile name matches. The caller decides whether a unique hit is trustworthy."""
+    data = await http.get_json(
+        f"{BASE}/search/users",
+        {"q": f"{full_name} in:name", "per_page": min(limit, 10)},
+        headers=_headers(),
+        fixture_name=f"github_users_{full_name.lower().replace(' ', '_')[:60]}",
+    )
+    if not data:
+        return []
+    if int(data.get("total_count") or 0) != 1:
+        return [i.get("login", "") for i in (data.get("items") or [])][:limit] if data.get("total_count") else []
+    return [data["items"][0]["login"]]

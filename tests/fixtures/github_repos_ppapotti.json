@@ -1,0 +1,18 @@
+[
+ {
+  "full_name": "ppapotti/think2sql",
+  "html_url": "https://github.com/ppapotti/think2sql",
+  "description": "Code for Think2SQL: reasoning for text-to-SQL",
+  "topics": [
+   "text-to-sql"
+  ],
+  "language": "Python",
+  "stargazers_count": 210,
+  "forks_count": 20,
+  "pushed_at": "2026-05-01T00:00:00Z",
+  "owner": {
+   "login": "ppapotti"
+  },
+  "fork": false
+ }
+]

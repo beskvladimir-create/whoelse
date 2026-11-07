@@ -41,8 +41,16 @@ async def fetch(website: str) -> Card | None:
         data = await http.get_json(url, fixture_name=f"card_{urlsplit(url).netloc}")
     except SourceError:
         return None
-    if not isinstance(data, dict) or not data.get("name"):
+    if not isinstance(data, dict) or not isinstance(data.get("name"), str) or not data["name"].strip():
         return None
+
+    def strs(v: object) -> list[str]:
+        if isinstance(v, str):
+            return [v]
+        if isinstance(v, list):
+            return [str(x) for x in v if isinstance(x, (str, int, float))]
+        return []
+
     upd = None
     if data.get("updated"):
         try:
@@ -51,10 +59,10 @@ async def fetch(website: str) -> Card | None:
             upd = None
     return Card(
         name=str(data["name"]),
-        working_on=[str(x) for x in data.get("working_on", [])][:10],
-        open_to=[str(x) for x in data.get("open_to", [])][:10],
-        contact=str(data.get("contact", "")),
-        languages=[str(x) for x in data.get("languages", [])][:10],
+        working_on=strs(data.get("working_on"))[:10],
+        open_to=strs(data.get("open_to"))[:10],
+        contact=str(data.get("contact") or "")[:200],
+        languages=strs(data.get("languages"))[:10],
         updated=upd,
         url=url,
     )

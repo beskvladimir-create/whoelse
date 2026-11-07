@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 from datetime import date, datetime
 from typing import Any
 
-from ..http import http
+from ..http import SourceError, http
 from ..models import Asset
 
 BASE = "https://export.arxiv.org/api/query"
@@ -85,7 +85,11 @@ async def search(query: str, *, max_results: int = 50, fixture_name: str | None 
     )
     if not text:
         return []
-    return [entry_to_asset(e) for e in parse_feed(text)]
+    try:
+        entries = parse_feed(text)
+    except ET.ParseError as e:
+        raise SourceError(f"arxiv: response is not Atom XML ({e}); the API may be rate-limiting")
+    return [entry_to_asset(e) for e in entries]
 
 
 async def by_author(name: str, *, max_results: int = 50) -> list[Asset]:
@@ -95,4 +99,5 @@ async def by_author(name: str, *, max_results: int = 50) -> list[Asset]:
 
 async def by_keywords(keywords: list[str], *, max_results: int = 50) -> list[Asset]:
     q = " AND ".join(f'all:"{k}"' for k in keywords[:3])
-    return await search(q, max_results=max_results)
+    fx = "arxiv_all-" + "_".join(re.sub(r"[^\w-]+", "_", k.lower()) for k in keywords[:3])
+    return await search(q, max_results=max_results, fixture_name=fx)
