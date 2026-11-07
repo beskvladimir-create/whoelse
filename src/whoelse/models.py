@@ -89,6 +89,7 @@ class Overlap(BaseModel):
     they_have: list[str] = Field(default_factory=list)
     you_have: list[str] = Field(default_factory=list)
     already_coauthors: bool = False
+    measured: bool = True  # False when no keyword/topic overlap could be computed (keyword-search hit only)
 
 
 class Candidate(BaseModel):

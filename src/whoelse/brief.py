@@ -60,7 +60,8 @@ def _top_assets(assets: list[Asset], n: int = 5) -> list[dict]:
 
 
 def _venues(assets: list[Asset], n: int = 5) -> list[str]:
-    c = Counter(a.extra.get("venue", "") for a in assets if a.kind == "paper" and a.extra.get("venue"))
+    skip = {"arxiv", "arxiv (cornell university)", "zenodo", "zenodo (cern european organization for nuclear research)", "ssrn", "biorxiv", "medrxiv"}
+    c = Counter(a.extra.get("venue", "") for a in assets if a.kind == "paper" and a.extra.get("venue") and a.extra["venue"].lower() not in skip)
     return [v for v, _ in c.most_common(n)]
 
 
@@ -74,7 +75,7 @@ def joint_work_brief(me: Profile, c: Candidate) -> dict:
     ranked = []
     for fid, label, effort, needs, desc in FORMATS:
         have = {k for k in needs if k in both}
-        fit = len(have) / (len(needs) or 1)
+        fit = len(have) / len(needs) if needs else 1.0  # a format that needs nothing is always possible
         s = fit + (0.35 if effort == "days" else 0.1 if effort == "weeks" else 0.0)
         if fid in ("replication", "joint_benchmark", "merge_tools"):
             # these only work when BOTH sides have something runnable

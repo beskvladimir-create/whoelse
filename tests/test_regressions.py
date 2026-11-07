@@ -1,14 +1,13 @@
 """One test per defect found in review. If any of these fails, a real-world input broke whoelse."""
 from __future__ import annotations
 
-import json
 from datetime import date
 
 import httpx
 import pytest
 
 from whoelse import server
-from whoelse.config import Settings, reset_settings, settings
+from whoelse.config import Settings, reset_settings
 from whoelse.http import Http, SourceError, _retry_after
 from whoelse.match import _Pool, _merge_by_name, find_overlaps
 from whoelse.models import Asset, Person, Profile
@@ -289,3 +288,32 @@ def test_headline_grammar():
     from whoelse.models import Candidate, Overlap
     one = [Candidate(person=Person(name="C D"), score=1, overlap=Overlap(), why="", reachable="email")]
     assert _headline(prof, one).startswith("1 person is working")
+
+
+def test_formats_that_need_nothing_are_not_penalised_and_card_lifts_them():
+    from whoelse.brief import joint_work_brief
+    from whoelse.models import Candidate, Card, Overlap
+    me = Profile(name="A B", assets=[Asset(kind="paper", title="p", url="", source="openalex")])
+    p = Person(name="C D", assets=[Asset(kind="paper", title="q", url="", source="openalex")])
+    p.card = Card(name="C D", open_to=["talk or podcast together"])
+    c = Candidate(person=p, score=1, overlap=Overlap(shared_keywords=["x"]), why="", reachable="card")
+    ids = [f["id"] for f in joint_work_brief(me, c)["formats"]]
+    assert ids[0] == "talk_together"
+
+
+def test_arxiv_is_not_a_venue():
+    from whoelse.brief import _venues
+    assert _venues([Asset(kind="paper", title="t", url="", source="openalex", extra={"venue": "arXiv (Cornell University)"})]) == []
+
+
+def test_handle_only_accounts_are_flagged_and_not_counted_as_reachable_people():
+    from whoelse.match import _handle_only
+    from whoelse.server import _headline
+    from whoelse.models import Candidate, Overlap
+    bot = Person(name="sqlbot", ids={"github": "sqlbot"}); bot.contact.email = "hi@sqlbot.dev"
+    assert _handle_only(bot)
+    human = Person(name="Ada Example", ids={"github": "adax"}); human.contact.email = "a@x.org"
+    assert not _handle_only(human)
+    cands = [Candidate(person=bot, score=1, overlap=Overlap(), why="", reachable="email"),
+             Candidate(person=human, score=1, overlap=Overlap(), why="", reachable="email")]
+    assert "1 can be written to today" in _headline(Profile(name="Me"), cands)

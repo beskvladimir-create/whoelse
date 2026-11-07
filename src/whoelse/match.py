@@ -141,6 +141,7 @@ def score(
         you_have=you_have,
         already_coauthors=already,
     )
+    ov.measured = overlap_score > 0.0
     return max(0.0, overlap_score + complement + recency - penalty), ov
 
 
@@ -168,6 +169,8 @@ def _why(p: Person, ov: Overlap) -> str:
         bits.append(f"active {p.last_active.isoformat()}")
     if p.card:
         bits.append("publishes a whoelse card")
+    if _handle_only(p):
+        bits.append("account name only, may be a team or a bot")
     return "; ".join(bits) or "weak overlap"
 
 
@@ -278,6 +281,18 @@ async def _enrich_safe(p: Person, me: Profile, errors: list[str], *, lookup_gith
         errors.append(f"github search rate-limited while enriching {p.name}: {e}")
     except Exception as e:  # noqa: BLE001
         errors.append(f"enrich {p.name}: {type(e).__name__}: {e}")
+
+
+def _from_keyword_search(p: Person) -> bool:
+    """arXiv/GitHub/HF hits come from a keyword query on the user's own terms; that is overlap
+    evidence even when the record carries no OpenAlex keywords to score against."""
+    return any(a.source in ("arxiv", "github", "huggingface") for a in p.assets)
+
+
+def _handle_only(p: Person) -> bool:
+    """Name is still a login: nobody has claimed it as a person."""
+    n = p.name.strip()
+    return bool(n) and (" " not in n) and (n.lower() in {v.lower() for v in p.ids.values()})
 
 
 def ov_is_coauthor(me: Profile, p: Person) -> bool:
@@ -494,7 +509,7 @@ async def find_overlaps(
     scored: list[tuple[float, Person, Overlap]] = []
     for p in people:
         s, ov = score(me, p, recent_months=recent_months, df=df, n_docs=n_docs)
-        if s > 0.02:
+        if s > 0.02 and (ov.measured or _from_keyword_search(p)):
             scored.append((s, p, ov))
     scored.sort(key=lambda x: -x[0])
 

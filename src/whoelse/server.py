@@ -71,7 +71,8 @@ def _headline(prof: Profile, cands: list[Candidate]) -> str:
     n = len(cands)
     if n == 0:
         return f"Nobody with recent public work overlapping {prof.name}'s came up. Try a longer recent_months, or add a GitHub/Hugging Face handle to the profile."
-    reach = sum(1 for c in cands if c.reachable in ("card", "email"))
+    from .match import _handle_only
+    reach = sum(1 for c in cands if c.reachable in ("card", "email") and not _handle_only(c.person))
     cards = sum(1 for c in cands if c.reachable == "card")
     from .match import GENERIC, GENERIC_TOPICS
     topics = []
@@ -86,7 +87,7 @@ def _headline(prof: Profile, cands: list[Candidate]) -> str:
     line = f"{n} {'person is' if n == 1 else 'people are'} working on what {prof.name} is working on"
     if topics:
         line += f" ({'; '.join(topics)})"
-    line += f". {reach} {'can' if reach != 1 else 'can'} be written to today"
+    line += f". {reach} can be written to today"
     if cards:
         line += f", {cards} of them published a whoelse card and said what they're open to"
     line += ". Each one comes with a reason, their recent work, and only the contacts they made public themselves."
