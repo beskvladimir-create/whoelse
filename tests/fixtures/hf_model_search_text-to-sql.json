@@ -1,0 +1,14 @@
+[
+ {
+  "id": "defog/sqlcoder-7b-2",
+  "author": "defog",
+  "downloads": 120000,
+  "likes": 300,
+  "tags": [
+   "text-to-sql",
+   "code"
+  ],
+  "lastModified": "2026-02-01T00:00:00Z",
+  "pipeline_tag": "text-generation"
+ }
+]

@@ -1,0 +1,19 @@
+{
+ "emails": {
+  "email": [
+   {
+    "email": "secret@example.org",
+    "visibility": "limited"
+   }
+  ]
+ },
+ "researcher-urls": {
+  "researcher-url": [
+   {
+    "url": {
+     "value": "https://graus.nu/"
+    }
+   }
+  ]
+ }
+}

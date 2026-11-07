@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "full_name": "ppapotti/think2sql",
+   "html_url": "https://github.com/ppapotti/think2sql",
+   "description": "Code for Think2SQL",
+   "topics": [
+    "text-to-sql",
+    "rl"
+   ],
+   "language": "Python",
+   "stargazers_count": 210,
+   "forks_count": 20,
+   "pushed_at": "2026-05-01T00:00:00Z",
+   "owner": {
+    "login": "ppapotti"
+   }
+  },
+  {
+   "full_name": "sqlbot/sqlbot",
+   "html_url": "https://github.com/sqlbot/sqlbot",
+   "description": "Chat with your database",
+   "topics": [
+    "text-to-sql",
+    "chatbot"
+   ],
+   "language": "TypeScript",
+   "stargazers_count": 5000,
+   "forks_count": 400,
+   "pushed_at": "2026-11-01T00:00:00Z",
+   "owner": {
+    "login": "sqlbot"
+   }
+  }
+ ]
+}

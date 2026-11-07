@@ -1,0 +1,19 @@
+{
+ "emails": {
+  "email": []
+ },
+ "researcher-urls": {
+  "researcher-url": [
+   {
+    "url": {
+     "value": "http://www.eurecom.fr/~papotti"
+    }
+   },
+   {
+    "url": {
+     "value": "https://github.com/ppapotti"
+    }
+   }
+  ]
+ }
+}

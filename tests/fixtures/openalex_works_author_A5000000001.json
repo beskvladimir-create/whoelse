@@ -1,0 +1,330 @@
+{
+ "results": [
+  {
+   "id": "https://openalex.org/W1",
+   "doi": "https://doi.org/10.0000/W1",
+   "display_name": "AI Appeals Processor: Automated Classification of Citizen Appeals in Government Services",
+   "publication_date": "2026-04-03",
+   "abstract_inverted_index": {
+    "We": [
+     0
+    ],
+    "present": [
+     1
+    ],
+    "a": [
+     2,
+     12
+    ],
+    "production": [
+     3
+    ],
+    "system": [
+     4
+    ],
+    "classifying": [
+     5
+    ],
+    "citizen": [
+     6
+    ],
+    "appeals": [
+     7
+    ],
+    "at": [
+     8
+    ],
+    "federal": [
+     9
+    ],
+    "scale": [
+     10
+    ],
+    "with": [
+     11
+    ],
+    "deep": [
+     13
+    ],
+    "learning": [
+     14
+    ],
+    "model.": [
+     15
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000001",
+      "display_name": "Vladimir Beskorovainyi",
+      "orcid": "https://orcid.org/0000-0002-0000-0001"
+     },
+     "institutions": [
+      {
+       "display_name": "besk.tech",
+       "country_code": "GE"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T12345",
+     "display_name": "Text Classification in Public Administration",
+     "score": 0.95
+    },
+    {
+     "id": "https://openalex.org/T11714",
+     "display_name": "Large Language Models and Applications",
+     "score": 0.8
+    }
+   ],
+   "keywords": [
+    {
+     "display_name": "citizen appeals",
+     "score": 0.5
+    },
+    {
+     "display_name": "text classification",
+     "score": 0.5
+    },
+    {
+     "display_name": "public administration",
+     "score": 0.5
+    },
+    {
+     "display_name": "deep learning",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 4,
+   "primary_location": {
+    "source": {
+     "display_name": "arXiv"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W1"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W1"
+   }
+  },
+  {
+   "id": "https://openalex.org/W2",
+   "doi": "https://doi.org/10.0000/W2",
+   "display_name": "Production Text-to-SQL on Open-Weight Models for Enterprise Data Marts",
+   "publication_date": "2026-01-15",
+   "abstract_inverted_index": {
+    "A": [
+     0
+    ],
+    "deployed": [
+     1
+    ],
+    "NL2SQL": [
+     2
+    ],
+    "system": [
+     3
+    ],
+    "over": [
+     4
+    ],
+    "500": [
+     5
+    ],
+    "data": [
+     6
+    ],
+    "marts": [
+     7
+    ],
+    "using": [
+     8
+    ],
+    "Qwen2.5-Coder": [
+     9
+    ],
+    "with": [
+     10
+    ],
+    "schema": [
+     11
+    ],
+    "linking": [
+     12
+    ],
+    "and": [
+     13
+    ],
+    "execution": [
+     14
+    ],
+    "feedback.": [
+     15
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000001",
+      "display_name": "Vladimir Beskorovainyi",
+      "orcid": "https://orcid.org/0000-0002-0000-0001"
+     },
+     "institutions": [
+      {
+       "display_name": "besk.tech",
+       "country_code": "GE"
+      }
+     ]
+    },
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000007",
+      "display_name": "Nikolai Apurin",
+      "orcid": null
+     },
+     "institutions": [
+      {
+       "display_name": "Artwell",
+       "country_code": "RU"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10181",
+     "display_name": "Natural Language Interfaces to Databases",
+     "score": 0.99
+    },
+    {
+     "id": "https://openalex.org/T11714",
+     "display_name": "Large Language Models and Applications",
+     "score": 0.8
+    }
+   ],
+   "keywords": [
+    {
+     "display_name": "text-to-sql",
+     "score": 0.5
+    },
+    {
+     "display_name": "schema linking",
+     "score": 0.5
+    },
+    {
+     "display_name": "open-weight models",
+     "score": 0.5
+    },
+    {
+     "display_name": "enterprise bi",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 2,
+   "primary_location": {
+    "source": {
+     "display_name": "arXiv"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W2"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W2"
+   }
+  },
+  {
+   "id": "https://openalex.org/W3",
+   "doi": "https://doi.org/10.0000/W3",
+   "display_name": "Machine Transcription of a Historical Scientific Archive",
+   "publication_date": "2025-10-01",
+   "abstract_inverted_index": {
+    "Full": [
+     0
+    ],
+    "transcription": [
+     1
+    ],
+    "of": [
+     2
+    ],
+    "a": [
+     3
+    ],
+    "historical": [
+     4
+    ],
+    "archive": [
+     5
+    ],
+    "using": [
+     6
+    ],
+    "vision": [
+     7
+    ],
+    "language": [
+     8
+    ],
+    "models": [
+     9
+    ],
+    "and": [
+     10
+    ],
+    "human": [
+     11
+    ],
+    "verification.": [
+     12
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000001",
+      "display_name": "Vladimir Beskorovainyi",
+      "orcid": "https://orcid.org/0000-0002-0000-0001"
+     },
+     "institutions": [
+      {
+       "display_name": "besk.tech",
+       "country_code": "GE"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10992",
+     "display_name": "Handwritten Text Recognition",
+     "score": 0.9
+    }
+   ],
+   "keywords": [
+    {
+     "display_name": "handwritten text recognition",
+     "score": 0.5
+    },
+    {
+     "display_name": "digital humanities",
+     "score": 0.5
+    },
+    {
+     "display_name": "archives",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 1,
+   "primary_location": {
+    "source": {
+     "display_name": "arXiv"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W3"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W3"
+   }
+  }
+ ]
+}

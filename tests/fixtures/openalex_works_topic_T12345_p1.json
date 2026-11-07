@@ -1,0 +1,190 @@
+{
+ "results": [
+  {
+   "id": "https://openalex.org/W20",
+   "doi": "https://doi.org/10.0000/W20",
+   "display_name": "Leveraging LLMs for Topic Classification in Public Affairs",
+   "publication_date": "2025-12-12",
+   "abstract_inverted_index": {
+    "Topic": [
+     0
+    ],
+    "classification": [
+     1
+    ],
+    "of": [
+     2
+    ],
+    "public": [
+     3
+    ],
+    "affairs": [
+     4
+    ],
+    "documents": [
+     5
+    ],
+    "with": [
+     6
+    ],
+    "large": [
+     7
+    ],
+    "language": [
+     8
+    ],
+    "models.": [
+     9
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000004",
+      "display_name": "Alejandro Peña",
+      "orcid": null
+     },
+     "institutions": [
+      {
+       "display_name": "Universidad Autónoma de Madrid",
+       "country_code": "ES"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T12345",
+     "display_name": "Text Classification in Public Administration",
+     "score": 0.95
+    },
+    {
+     "id": "https://openalex.org/T11714",
+     "display_name": "Large Language Models and Applications",
+     "score": 0.8
+    }
+   ],
+   "keywords": [
+    {
+     "display_name": "public affairs",
+     "score": 0.5
+    },
+    {
+     "display_name": "topic classification",
+     "score": 0.5
+    },
+    {
+     "display_name": "large language models",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 9,
+   "primary_location": {
+    "source": {
+     "display_name": "Pattern Recognition Letters"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W20"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W20"
+   }
+  },
+  {
+   "id": "https://openalex.org/W21",
+   "doi": "https://doi.org/10.0000/W21",
+   "display_name": "To Redact or Not to Redact? Local LLMs for Deliberative Process Privilege",
+   "publication_date": "2026-05-10",
+   "abstract_inverted_index": {
+    "A": [
+     0
+    ],
+    "local": [
+     1
+    ],
+    "LLM": [
+     2
+    ],
+    "approach": [
+     3
+    ],
+    "to": [
+     4
+    ],
+    "classifying": [
+     5
+    ],
+    "government": [
+     6
+    ],
+    "documents": [
+     7
+    ],
+    "for": [
+     8
+    ],
+    "release": [
+     9
+    ],
+    "under": [
+     10
+    ],
+    "FOI": [
+     11
+    ],
+    "law.": [
+     12
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000005",
+      "display_name": "David Graus",
+      "orcid": "https://orcid.org/0000-0002-9035-7045"
+     },
+     "institutions": [
+      {
+       "display_name": "University of Amsterdam",
+       "country_code": "NL"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T12345",
+     "display_name": "Text Classification in Public Administration",
+     "score": 0.95
+    }
+   ],
+   "keywords": [
+    {
+     "display_name": "open government",
+     "score": 0.5
+    },
+    {
+     "display_name": "local llm",
+     "score": 0.5
+    },
+    {
+     "display_name": "document classification",
+     "score": 0.5
+    },
+    {
+     "display_name": "freedom of information",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 6,
+   "primary_location": {
+    "source": {
+     "display_name": "arXiv"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W21"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W21"
+   }
+  }
+ ]
+}

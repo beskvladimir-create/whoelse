@@ -1,0 +1,24 @@
+{
+ "emails": {
+  "email": [
+   {
+    "email": "vladimir@besk.tech",
+    "visibility": "public"
+   }
+  ]
+ },
+ "researcher-urls": {
+  "researcher-url": [
+   {
+    "url": {
+     "value": "https://vladimir.besk.tech"
+    }
+   },
+   {
+    "url": {
+     "value": "https://github.com/besk-tech"
+    }
+   }
+  ]
+ }
+}

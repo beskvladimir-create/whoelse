@@ -1,0 +1,273 @@
+{
+ "results": [
+  {
+   "id": "https://openalex.org/W10",
+   "doi": "https://doi.org/10.0000/W10",
+   "display_name": "Think2SQL: Reinforcing LLM Reasoning for Text2SQL",
+   "publication_date": "2026-04-20",
+   "abstract_inverted_index": {
+    "We": [
+     0
+    ],
+    "reinforce": [
+     1
+    ],
+    "reasoning": [
+     2
+    ],
+    "capabilities": [
+     3
+    ],
+    "of": [
+     4
+    ],
+    "LLMs": [
+     5
+    ],
+    "for": [
+     6
+    ],
+    "text": [
+     7
+    ],
+    "to": [
+     8
+    ],
+    "SQL": [
+     9
+    ],
+    "with": [
+     10
+    ],
+    "partial": [
+     11
+    ],
+    "rewards.": [
+     12
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000002",
+      "display_name": "Paolo Papotti",
+      "orcid": "https://orcid.org/0000-0003-0651-4128"
+     },
+     "institutions": [
+      {
+       "display_name": "EURECOM",
+       "country_code": "FR"
+      }
+     ]
+    },
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000006",
+      "display_name": "Li Wei",
+      "orcid": null
+     },
+     "institutions": [
+      {
+       "display_name": "Tsinghua University",
+       "country_code": "CN"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10181",
+     "display_name": "Natural Language Interfaces to Databases",
+     "score": 0.99
+    },
+    {
+     "id": "https://openalex.org/T11714",
+     "display_name": "Large Language Models and Applications",
+     "score": 0.8
+    }
+   ],
+   "keywords": [
+    {
+     "display_name": "text-to-sql",
+     "score": 0.5
+    },
+    {
+     "display_name": "reinforcement learning",
+     "score": 0.5
+    },
+    {
+     "display_name": "reasoning",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 40,
+   "primary_location": {
+    "source": {
+     "display_name": "VLDB"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W10"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W10"
+   }
+  },
+  {
+   "id": "https://openalex.org/W11",
+   "doi": "https://doi.org/10.0000/W11",
+   "display_name": "Routing Queries Across SQL Generators",
+   "publication_date": "2025-11-04",
+   "abstract_inverted_index": {
+    "Optimizing": [
+     0
+    ],
+    "SQL": [
+     1
+    ],
+    "generation": [
+     2
+    ],
+    "via": [
+     3
+    ],
+    "LLM": [
+     4
+    ],
+    "routing": [
+     5
+    ],
+    "between": [
+     6
+    ],
+    "small": [
+     7
+    ],
+    "and": [
+     8
+    ],
+    "large": [
+     9
+    ],
+    "models.": [
+     10
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000003",
+      "display_name": "Amine Mhedhbi",
+      "orcid": "https://orcid.org/0009-0000-9342-5144"
+     },
+     "institutions": [
+      {
+       "display_name": "Polytechnique Montréal",
+       "country_code": "CA"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10181",
+     "display_name": "Natural Language Interfaces to Databases",
+     "score": 0.99
+    }
+   ],
+   "keywords": [
+    {
+     "display_name": "text-to-sql",
+     "score": 0.5
+    },
+    {
+     "display_name": "llm routing",
+     "score": 0.5
+    },
+    {
+     "display_name": "query optimization",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 15,
+   "primary_location": {
+    "source": {
+     "display_name": "arXiv"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W11"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W11"
+   }
+  },
+  {
+   "id": "https://openalex.org/W12",
+   "doi": "https://doi.org/10.0000/W12",
+   "display_name": "Schema Linking at Scale",
+   "publication_date": "2026-06-01",
+   "abstract_inverted_index": {
+    "Schema": [
+     0
+    ],
+    "linking": [
+     1
+    ],
+    "for": [
+     2
+    ],
+    "very": [
+     3
+    ],
+    "wide": [
+     4
+    ],
+    "enterprise": [
+     5
+    ],
+    "schemas.": [
+     6
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000006",
+      "display_name": "Li Wei",
+      "orcid": null
+     },
+     "institutions": [
+      {
+       "display_name": "Tsinghua University",
+       "country_code": "CN"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10181",
+     "display_name": "Natural Language Interfaces to Databases",
+     "score": 0.99
+    }
+   ],
+   "keywords": [
+    {
+     "display_name": "schema linking",
+     "score": 0.5
+    },
+    {
+     "display_name": "text-to-sql",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 3,
+   "primary_location": {
+    "source": {
+     "display_name": "arXiv"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W12"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W12"
+   }
+  }
+ ]
+}

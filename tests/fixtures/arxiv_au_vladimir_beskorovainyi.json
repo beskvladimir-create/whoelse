@@ -1,0 +1,3 @@
+{
+ "__text__": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\">\n  <entry>\n    <id>http://arxiv.org/abs/2604.03672v1</id>\n    <published>2026-04-03T00:00:00Z</published>\n    <title>AI Appeals Processor: Automated Classification of Citizen Appeals in Government Services</title>\n    <summary>We present a production system classifying citizen appeals.</summary>\n    <author><name>Vladimir Beskorovainyi</name></author>\n    <category term=\"cs.CL\"/><category term=\"cs.LG\"/>\n  </entry>\n</feed>"
+}

@@ -1,0 +1,23 @@
+{
+ "results": [
+  {
+   "id": "https://openalex.org/A5000000001",
+   "display_name": "Vladimir Beskorovainyi",
+   "orcid": "https://orcid.org/0000-0002-0000-0001",
+   "works_count": 3,
+   "last_known_institutions": [
+    {
+     "display_name": "besk.tech",
+     "country_code": "GE"
+    }
+   ],
+   "affiliations": [
+    {
+     "institution": {
+      "display_name": "besk.tech"
+     }
+    }
+   ]
+  }
+ ]
+}

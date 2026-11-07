@@ -1,0 +1,19 @@
+{
+ "emails": {
+  "email": [
+   {
+    "email": "amine.mhedhbi@polymtl.ca",
+    "visibility": "public"
+   }
+  ]
+ },
+ "researcher-urls": {
+  "researcher-url": [
+   {
+    "url": {
+     "value": "http://amine.io/"
+    }
+   }
+  ]
+ }
+}

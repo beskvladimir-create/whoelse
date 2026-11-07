@@ -1,0 +1,21 @@
+{
+  "name": "Vladimir Beskorovainyi",
+  "working_on": [
+    "text-to-SQL on open-weight models",
+    "classification of citizen appeals at national scale",
+    "machine transcription of historical archives"
+  ],
+  "open_to": [
+    "co-author",
+    "joint benchmark",
+    "cross-replication",
+    "talk together"
+  ],
+  "contact": "vladimir@besk.tech",
+  "languages": [
+    "en",
+    "ru"
+  ],
+  "updated": "2026-11-07",
+  "spec": "https://github.com/besk-tech/whoelse#the-card"
+}

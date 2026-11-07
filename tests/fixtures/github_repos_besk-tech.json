@@ -1,0 +1,38 @@
+[
+ {
+  "full_name": "besk-tech/pii-roundtrip",
+  "html_url": "https://github.com/besk-tech/pii-roundtrip",
+  "description": "Reversible PII anonymisation for LLM pipelines",
+  "topics": [
+   "pii",
+   "anonymization",
+   "llm"
+  ],
+  "language": "Python",
+  "stargazers_count": 12,
+  "forks_count": 1,
+  "pushed_at": "2026-10-20T00:00:00Z",
+  "owner": {
+   "login": "besk-tech"
+  },
+  "fork": false
+ },
+ {
+  "full_name": "besk-tech/askbase",
+  "html_url": "https://github.com/besk-tech/askbase",
+  "description": "Text-to-SQL over enterprise data marts with open-weight models",
+  "topics": [
+   "text-to-sql",
+   "nl2sql",
+   "qwen"
+  ],
+  "language": "Python",
+  "stargazers_count": 30,
+  "forks_count": 4,
+  "pushed_at": "2026-09-01T00:00:00Z",
+  "owner": {
+   "login": "besk-tech"
+  },
+  "fork": false
+ }
+]
