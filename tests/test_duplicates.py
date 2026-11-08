@@ -221,6 +221,7 @@ def test_hyphen_parts_count_once_and_actions_are_required():
 def test_batch_takes_leader_plus_most_recent_and_defers_the_rest():
     rows = [_row(f"u{i}/r{i}", 1, pushed=f"2026-{(i % 5) + 6:02d}-15") for i in range(30)]
     rows[0]["stars"] = 300
+    rows[0]["pushed"] = "2026-11-01"
     with pytest.raises(ValueError, match="batch=true"):
         dup.merge_plan(_dup(rows))
     plan = dup.merge_plan(_dup(rows), batch=True)
