@@ -28,5 +28,4 @@
 
 **Everyone has at least one of:** plugin.
 
-Features come from each repository's one-line description and topics, not its README; a missing feature may be unstated rather than absent. 
-Authors: a correction is a pull request to this file or a line in the issues of whoelse.
+Features come from each repository's one-line description and topics, not its README; a missing feature may be unstated rather than absent. Authors: a correction is a pull request to this file or an issue on whoelse.

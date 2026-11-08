@@ -42,14 +42,13 @@
 | [flannerychristopher/arxiv-mcp](https://github.com/flannerychristopher/arxiv-mcp) | 0 | 2025-08-18 | MCP server |  |
 | [jonatribeiro/ArxivMCP](https://github.com/jonatribeiro/ArxivMCP) | 0 | 2026-05-08 | MCP server |  |
 | [DoraemonHugU/thesisiknowbase](https://github.com/DoraemonHugU/thesisiknowbase) | 0 | 2026-04-16 | MCP server |  |
-| [isagoakira/mcp-server-arxiv](https://github.com/isagoakira/mcp-server-arxiv) | 0 | 2026-05-11 | MCP server |  |
-| [kota-may478/paper-search-mcp-server](https://github.com/kota-may478/paper-search-mcp-server) | 0 | 2026-09-25 | MCP server |  |
 | [jorgegoco/arxiv-mcp-server](https://github.com/jorgegoco/arxiv-mcp-server) | 0 | 2025-09-26 | MCP server |  |
 | [gharatharshita2/paper-assistant](https://github.com/gharatharshita2/paper-assistant) | 0 | 2026-11-04 | MCP server |  |
+| [isagoakira/mcp-server-arxiv](https://github.com/isagoakira/mcp-server-arxiv) | 0 | 2026-05-11 | MCP server |  |
+| [kota-may478/paper-search-mcp-server](https://github.com/kota-may478/paper-search-mcp-server) | 0 | 2026-09-25 | MCP server |  |
 
 **Nobody in this list has:** skill.
 
 **Everyone has at least one of:** MCP server, Cursor, Codex, search, Copilot, Obsidian, cloud sync.
 
-Features come from each repository's one-line description and topics, not its README; a missing feature may be unstated rather than absent. 
-Authors: a correction is a pull request to this file or a line in the issues of whoelse.
+Features come from each repository's one-line description and topics, not its README; a missing feature may be unstated rather than absent. Authors: a correction is a pull request to this file or an issue on whoelse.

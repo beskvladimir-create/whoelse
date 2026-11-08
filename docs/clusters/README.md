@@ -4,7 +4,7 @@ What already exists, by idea. Each page is one real `find_duplicates` run: the r
 
 - [a CLI that syncs Claude Code sessions across machines](claude-code-session-sync.md): 40 repositories, top tawanorg/claude-sync (320 stars)
 - [an MCP server for arXiv paper search](arxiv-mcp-servers.md): 40 repositories, top openags/paper-search-mcp (3018 stars)
-- [reversible PII anonymization for documents before sending them to an LLM](pii-anonymization-for-llms.md): 4 repositories, top Rizzo-AI-Academy/rizzo-pii (1254 stars)
+- [reversible PII anonymization for documents before sending them to an LLM](pii-anonymization-for-llms.md): 7 repositories, top CatchTheTornado/text-extract-api (3191 stars)
 - [a dashboard for tracking LLM token costs across providers](llm-token-cost-dashboards.md): 8 repositories, top Han-1413141/dsh-cost-meter (651 stars)
-- [a static site generator for Obsidian vaults](obsidian-static-site-generators.md): 26 repositories, top Hellyom/Obsidian-Vault-HTML-Graph-Generator (47 stars)
+- [a static site generator for Obsidian vaults](obsidian-static-site-generators.md): 17 repositories, top jwintz/lithos (29 stars)
 - [a Rust library for parsing DICOM files](dicom-rust.md): 17 repositories, top Enet4/dicom-rs (574 stars)
