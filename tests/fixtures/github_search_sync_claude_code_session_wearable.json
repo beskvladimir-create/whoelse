@@ -1,0 +1,158 @@
+{
+ "total_count": 9,
+ "items": [
+  {
+   "full_name": "tawanorg/claude-sync",
+   "html_url": "https://github.com/tawanorg/claude-sync",
+   "description": "Sync Claude Code sessions across devices using Cloudflare R2 with end-to-end encryption",
+   "topics": [],
+   "language": "Go",
+   "stargazers_count": 320,
+   "forks_count": 0,
+   "pushed_at": "2026-11-06T00:00:00Z",
+   "owner": {
+    "login": "tawanorg"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "ahmojo/codex-claude-transfer",
+   "html_url": "https://github.com/ahmojo/codex-claude-transfer",
+   "description": "Local-first CLI that moves Codex & Claude Code sessions between machines: export, copy, import. No cloud, optional LAN sync.",
+   "topics": [
+    "claude-code",
+    "codex",
+    "local-first"
+   ],
+   "language": "Go",
+   "stargazers_count": 80,
+   "forks_count": 0,
+   "pushed_at": "2026-10-29T00:00:00Z",
+   "owner": {
+    "login": "ahmojo"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "songkeys/cc-same",
+   "html_url": "https://github.com/songkeys/cc-same",
+   "description": "Keep Claude Desktop's local sessions identical across all your accounts. Desktop app (macOS, Windows, Linux) and CLI.",
+   "topics": [],
+   "language": "Rust",
+   "stargazers_count": 58,
+   "forks_count": 0,
+   "pushed_at": "2026-11-07T00:00:00Z",
+   "owner": {
+    "login": "songkeys"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "Vincentvn28/claude-session-sync",
+   "html_url": "https://github.com/Vincentvn28/claude-session-sync",
+   "description": "Sync Claude Code sessions (chat history + memory + plans) across machines via Google Drive",
+   "topics": [],
+   "language": "TypeScript",
+   "stargazers_count": 4,
+   "forks_count": 0,
+   "pushed_at": "2026-10-21T00:00:00Z",
+   "owner": {
+    "login": "Vincentvn28"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "sirajeddineaissa/claude-session-sync",
+   "html_url": "https://github.com/sirajeddineaissa/claude-session-sync",
+   "description": "Sync Claude Code sessions across machines. Encrypt and back up conversations to a private GitHub repo",
+   "topics": [],
+   "language": "TypeScript",
+   "stargazers_count": 3,
+   "forks_count": 0,
+   "pushed_at": "2026-09-10T00:00:00Z",
+   "owner": {
+    "login": "sirajeddineaissa"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "ikook-wang/cc-sync",
+   "html_url": "https://github.com/ikook-wang/cc-sync",
+   "description": "Sync Claude Code sessions & config between machines over SSH",
+   "topics": [
+    "ssh",
+    "tailscale"
+   ],
+   "language": "Shell",
+   "stargazers_count": 2,
+   "forks_count": 0,
+   "pushed_at": "2026-09-25T00:00:00Z",
+   "owner": {
+    "login": "ikook-wang"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "Voxiven/dotsync",
+   "html_url": "https://github.com/Voxiven/dotsync",
+   "description": "Sync Claude Code memory, sessions, and dotfiles between machines via Syncthing",
+   "topics": [],
+   "language": "Shell",
+   "stargazers_count": 2,
+   "forks_count": 0,
+   "pushed_at": "2026-10-07T00:00:00Z",
+   "owner": {
+    "login": "Voxiven"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "mattbirchler/claude-code-obsidian",
+   "html_url": "https://github.com/mattbirchler/claude-code-obsidian",
+   "description": "An Obsidian plugin that syncs your Claude Code sessions to Obsidian",
+   "topics": [],
+   "language": "TypeScript",
+   "stargazers_count": 3,
+   "forks_count": 0,
+   "pushed_at": "2026-10-03T00:00:00Z",
+   "owner": {
+    "login": "mattbirchler"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "chrisdoc/hevy-mcp",
+   "html_url": "https://github.com/chrisdoc/hevy-mcp",
+   "description": "Manage your Hevy workouts and sessions, stay synced",
+   "topics": [
+    "fitness"
+   ],
+   "language": "TypeScript",
+   "stargazers_count": 533,
+   "forks_count": 0,
+   "pushed_at": "2026-11-07T00:00:00Z",
+   "owner": {
+    "login": "chrisdoc"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  }
+ ]
+}

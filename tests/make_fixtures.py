@@ -349,6 +349,8 @@ CLUSTER = [
 ]
 put("github_search_sync_claude_code_sessions_machines", {"total_count": 233, "items": CLUSTER})
 put("github_search_claude_code_sync_sessions", {"total_count": 233, "items": CLUSTER})
+for q in ("sync_claude_code_sessions_wearable", "claude_code_wearable", "sync_claude_code_session_wearable"):
+    put(f"github_search_{q}", {"total_count": 9, "items": CLUSTER})
 # a broad field: the search has far more than the cap; the leader is a tutorial, not a todo app
 put("github_search_todo_rust", {"total_count": 2193, "items": [
     repo("InkSha/rust-tutorial", "Rust tutorial with a todo app example", "Rust", 900, "2026-10-01T00:00:00Z"),
