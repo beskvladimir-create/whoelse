@@ -228,3 +228,16 @@ def test_batch_takes_leader_plus_most_recent_and_defers_the_rest():
     assert plan["base"] == "u0/r0" and len(plan["issues"]) == dup.MAX_CLUSTER_FOR_MERGE
     assert plan["issues"][0]["title"].startswith("30 of us") and "this round asks 15" in plan["issues"][1]["body"]
     assert len(plan["deferred"]) == 30 - dup.MAX_CLUSTER_FOR_MERGE
+
+
+async def test_distinctive_word_required_and_verb_not_counted():
+    # "sessions to a wearable": the sync-session repositories share sessions and sync but not the wearable part
+    d = await dup.find_duplicates("sync Claude Code sessions to a wearable")
+    assert d["count"] == 0
+    # the verb ("generator") is required but does not count as a job word: a note-UID generator for Obsidian is not a static site generator
+    from whoelse.models import Asset
+    from datetime import date
+    toks = dup._tokens("a static site generator for Obsidian vaults")
+    groups = dup._job_groups(toks)
+    core = [g for g in groups if not all(dup._ACTION_FORMS.get(t) for t in g)]
+    assert {"generator"} not in core and {"vault"} in core

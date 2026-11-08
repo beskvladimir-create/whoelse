@@ -28,7 +28,10 @@ API = "https://api.github.com"
 _STOP = {"a", "an", "the", "for", "and", "or", "of", "to", "in", "on", "with", "your", "you", "via", "from", "by", "into",
          "is", "it", "that", "this", "all", "any", "one", "tool", "tools", "app", "cli", "simple", "fast", "easy", "lightweight",
          "open", "source", "free", "local", "based", "using", "built", "made", "powered", "support", "supports", "across",
-         "between", "every", "more", "etc", "like", "just", "also", "new", "best"}
+         "between", "every", "more", "etc", "like", "just", "also", "new", "best", "before", "after", "them", "they", "their",
+         "when", "then", "while", "where", "which", "what", "how", "who", "can", "will", "should", "would", "could", "must",
+         "onto", "over", "under", "without", "within", "through", "during", "about", "against", "each", "both", "such", "than",
+         "too", "very", "own", "not", "only", "some", "other", "these", "those", "there", "here", "its", "our", "their", "my"}
 # Single tokens that name a feature unambiguously. Words that also mean something else ("watch",
 # "merge", "token", "memory", "hook", "drive", "remote", "test") are not here; the phrases below cover them.
 _FEATURE_WORDS = {
@@ -198,7 +201,7 @@ _GENERIC_WORDS = {"parsing", "parse", "parser", "tracking", "track", "tracker", 
                   "static", "site", "sites", "dashboard", "bot", "extension", "library", "framework", "service", "problem", "people",
                   "working", "research", "same", "across", "between", "before", "after", "sending", "send", "document", "documents"}
 # words that cannot make a repository "related" on their own, in stemmed and plain form
-_DULL = {_stem(w) for w in _COMMON | _GENERIC_WORDS | _TECH} | _COMMON | _GENERIC_WORDS | _TECH
+_DULL = {_stem(w) for w in _COMMON | _GENERIC_WORDS} | _COMMON | _GENERIC_WORDS   # _TECH words (pii, nl2sql, mcp) are sharp
 
 
 def _rarity(t: str) -> tuple[int, int]:
@@ -346,7 +349,13 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
     # job words that must appear in a repository's text: all of them for a short idea, half for a long one
     groups = _job_groups(toks)
     actions = _actions_in(idea)
-    need = len(groups) if len(groups) <= 3 else max(2, math.ceil(len(groups) / 2))
+    # The verb is required separately (below); the count is over the other job words, the "thing":
+    # "static site generator for Obsidian vaults" must match static/site/vault, not just "generator".
+    core_groups = [g for g in groups if not all(_ACTION_FORMS.get(t) for t in g)]
+    need = max(1, math.ceil(len(core_groups) / 2)) if core_groups else 0
+    # and the distinctive words (not common, not generic) cannot all be missing: "sessions to a
+    # wearable" is about the wearable, not about sessions
+    sharp_groups = [g for g in core_groups if any(t not in _DULL for t in g)]
     stale = (date.today() - timedelta(days=30 * months)).isoformat()
     found: dict[str, Asset] = {}
     errors: list[str] = []
@@ -366,18 +375,21 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
     scored, excluded, related = [], [], []
     for r in repos:
         sim, bag_hit = _similarity_hits(job, r, groups)
-        matched = len(bag_hit)
+        matched = sum(1 for g in core_groups if g & bag_hit)
+        raw_matched = len(bag_hit)
+        if sharp_groups and not any(g & bag_hit for g in sharp_groups):
+            matched = 0
         if products and not (products & _expand(_bag(r))):
             continue   # the idea is about a product; a repository that never mentions it is about something else
         if actions and not (actions & _actions_in(r.title.split("/")[-1].replace("-", " ") + " " + r.summary + " " + " ".join(r.keywords))):
             # the idea says what the tool does with the thing; a repository that never says so is about the thing, not the job
-            if matched >= 1:
-                sharp_hit = any(t not in _DULL for t in bag_hit)
-                related.append((matched + (1 if sharp_hit else 0), r, sharp_hit))
+            if raw_matched >= 1:
+                sharp_hit = any(t not in _DULL and t not in _TECH for t in bag_hit)
+                related.append((raw_matched + (1 if sharp_hit else 0), r, sharp_hit))
             continue
-        if matched >= 2 or (matched == 1 and any(t in bag_hit for t in job if t not in _COMMON)):
-            sharp_hit = any(t not in _DULL for t in bag_hit)
-            related.append((matched + (1 if sharp_hit else 0), r, sharp_hit))
+        if raw_matched >= 2 or (raw_matched == 1 and any(t in bag_hit for t in job if t not in _COMMON)):
+            sharp_hit = any(t not in _DULL and t not in _TECH for t in bag_hit)   # "mcp server" alone names nothing
+            related.append((raw_matched + (1 if sharp_hit else 0), r, sharp_hit))
         if sim < SIM_THRESHOLD or matched < need:
             continue
         if max_stars is not None and r.stats.get("stars", 0) > max_stars:
