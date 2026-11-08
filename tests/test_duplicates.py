@@ -235,9 +235,7 @@ async def test_distinctive_word_required_and_verb_not_counted():
     d = await dup.find_duplicates("sync Claude Code sessions to a wearable")
     assert d["count"] == 0
     # the verb ("generator") is required but does not count as a job word: a note-UID generator for Obsidian is not a static site generator
-    from whoelse.models import Asset
-    from datetime import date
     toks = dup._tokens("a static site generator for Obsidian vaults")
     groups = dup._job_groups(toks)
-    core = [g for g in groups if not all(dup._ACTION_FORMS.get(t) for t in g)]
-    assert {"generator"} not in core and {"vault"} in core
+    core = [g for g in groups if not all(t in dup._ACTION_VERBS for t in g)]
+    assert {"generator"} not in core and {"vault"} in core and {"site"} in core

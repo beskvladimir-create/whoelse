@@ -166,18 +166,15 @@ _ACTIONS: dict[str, set[str]] = {
     "backup": {"backup", "back-up", "snapshot", "archive", "export", "save", "restore", "vault"},
     "check": {"check", "checker", "validate", "validator", "verify", "lint", "audit"},
 }
-_ACTION_FORMS = {}
+_ACTION_FORMS: dict[str, set[str]] = {}    # any word that signals an action (verbs and their noun synonyms): for matching
+_ACTION_VERBS: set[str] = set()           # the verbs themselves, in their forms: excluded from the "thing" words of an idea
 for _a, _ws in _ACTIONS.items():
     for _w in _ws:
         _ACTION_FORMS.setdefault(_w, set()).add(_a)
-    _ACTION_FORMS.setdefault(_a, set()).add(_a)
-    _ACTION_FORMS.setdefault(_a + "s", set()).add(_a)
-    _ACTION_FORMS.setdefault(_a + "es", set()).add(_a)
-    _ACTION_FORMS.setdefault(_a + "ing", set()).add(_a)
-    _ACTION_FORMS.setdefault(_a + "d", set()).add(_a)
-    _ACTION_FORMS.setdefault(_a + "ed", set()).add(_a)
-    _ACTION_FORMS.setdefault(_a + "r", set()).add(_a)
-    _ACTION_FORMS.setdefault(_a + "er", set()).add(_a)
+    for _f in (_a, _a + "s", _a + "es", _a + "ing", _a + "d", _a + "ed", _a + "r", _a + "er", _stem(_a), _stem(_a + "ing")):
+        _ACTION_FORMS.setdefault(_f, set()).add(_a)
+        _ACTION_VERBS.add(_f)
+_ACTION_VERBS |= {"generator", "converter", "tracker", "parser", "finder", "checker", "summarizer", "anonymizer", "blocker"}
 
 
 def _actions_in(text: str) -> set[str]:
@@ -351,7 +348,7 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
     actions = _actions_in(idea)
     # The verb is required separately (below); the count is over the other job words, the "thing":
     # "static site generator for Obsidian vaults" must match static/site/vault, not just "generator".
-    core_groups = [g for g in groups if not all(_ACTION_FORMS.get(t) for t in g)]
+    core_groups = [g for g in groups if not all(t in _ACTION_VERBS for t in g)]
     need = max(1, math.ceil(len(core_groups) / 2)) if core_groups else 0
     # and the distinctive words (not common, not generic) cannot all be missing: "sessions to a
     # wearable" is about the wearable, not about sessions
