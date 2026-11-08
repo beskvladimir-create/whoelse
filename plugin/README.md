@@ -2,7 +2,7 @@
 
 Install the MCP server first (`pip install git+https://github.com/beskvladimir-create/whoelse`).
 
-**Claude Code**: `claude plugin add ./plugin` from this repository, or copy
+**Claude Code**: `claude --plugin-dir ./plugin` from this repository (one session), or copy
 `skills/before-you-build/SKILL.md` into `~/.claude/skills/before-you-build/` and add the server with
 `claude mcp add whoelse -- whoelse`. The skill makes the agent call `find_duplicates` before it
 starts building anything.

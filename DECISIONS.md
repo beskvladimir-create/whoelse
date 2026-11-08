@@ -74,7 +74,7 @@ none).
 
 GitHub's Acceptable Use Policies (read 2026-11-08) prohibit "automated excessive bulk activity",
 "unsolicited advertising or solicitation" and "excessive bulk content in issues". The limits are
-code, not advice: 3–15 living repositories per proposal, 10 issues a day, 20 s pacing, a ledger so
+code, not advice: 3–15 living repositories per proposal, 10 issues a day, 3 s pacing, a ledger so
 no repository is asked twice, archived and issues-disabled repositories skipped, the plan inline or
 at a URL the user owns (no placeholder links in anything sent), opened only on the user's explicit
 yes from the user's own account. 74 tests.

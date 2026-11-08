@@ -182,15 +182,20 @@ def _bag(repo: Asset) -> set[str]:
 
 
 def _similarity(job: set[str], repo: Asset) -> tuple[float, int]:
+    sim, hit = _similarity_hits(job, repo)
+    return sim, len(hit)
+
+
+def _similarity_hits(job: set[str], repo: Asset) -> tuple[float, set[str]]:
     """Cosine-like overlap between the idea's job words and the repository's text, plus the number
     of job words matched. Product names do not count: a repository is not a duplicate of "a Claude
     Code session backup tool" for mentioning Claude Code."""
     raw = _bag(repo)
     bag = _expand(raw)
     if not bag or not job:
-        return 0.0, 0
-    matched = sum(1 for t in job if t in bag or any(set(_tokens(s)) & bag for s in _SYNONYMS.get(t, [])))
-    return matched / math.sqrt(len(job) * len(raw)), matched
+        return 0.0, set()
+    hit = {t for t in job if t in bag or any(set(_tokens(s)) & bag for s in _SYNONYMS.get(t, []))}
+    return len(hit) / math.sqrt(len(job) * len(raw)), hit
 
 
 SIM_THRESHOLD = 0.3
@@ -234,11 +239,13 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
         except SourceError as e:
             errors.append(f"github '{q}': {e}")
     repos = list(found.values())
-    broad = bool(totals) and totals[0] > BROAD_SEARCH
+    search_total = max(totals) if totals else 0
+    broad = search_total > BROAD_SEARCH
     scored, excluded, related = [], [], []
     for r in repos:
-        sim, matched = _similarity(job, r)
-        if matched >= 1:
+        sim, bag_hit = _similarity_hits(job, r)
+        matched = len(bag_hit)
+        if matched >= 2 or (matched == 1 and any(t in bag_hit for t in job if t not in _COMMON)):
             related.append(r)
         if sim < SIM_THRESHOLD or matched < need:
             continue
@@ -264,19 +271,21 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
     strongest_excluded = max(excluded, key=lambda r: r.stats.get("stars", 0)) if excluded else None
 
     top_related = max(related, key=lambda r: r.stats.get("stars", 0)) if related else None
-    verdict = _verdict(idea, cluster, stars, leader, months=months, broad=broad, total=totals[0] if totals else 0,
+    verdict = _verdict(idea, cluster, stars, leader, months=months, broad=broad, total=search_total,
                        errors=errors, excluded=strongest_excluded, capped=capped, related=len(related), top_related=top_related)
     return {
         "idea": idea,
         "count": len(cluster),
         "count_note": ("at least; the search returns the most-starred 50 per query" if capped or broad else None),
-        "search_total": totals[0] if totals else None,
+        "search_total": search_total if totals else None,
+        "broad": broad,
         "total_stars": sum(stars),
         "median_stars": sorted(stars)[len(stars) // 2] if stars else 0,
-        "median_note": "median of the matches returned, which GitHub sorts by stars; the field's real median is lower",
+        "median_note": "median of the matches returned, which GitHub sorts by stars; the field's real median is not higher",
         "leader": {"repo": leader.title, "url": leader.url, "stars": leader.stats.get("stars", 0), "pushed": leader.date.isoformat() if leader.date else None} if leader else None,
-        "related": {"count": len(related), "top": {"repo": top_related.title, "stars": top_related.stats.get("stars", 0), "url": top_related.url} if top_related else None,
-                    "note": "repositories sharing at least one job word with the idea; the field, not the duplicates"},
+        "related": {"count": len(related), "count_note": "among the fetched results (50 per query); search_total says how many the field has",
+                    "top": {"repo": top_related.title, "stars": top_related.stats.get("stars", 0), "url": top_related.url} if top_related else None,
+                    "note": "repositories sharing part of the job with the idea, by their one-line text; the field, not the duplicates, and look-alikes are possible"},
         "excluded_by_max_stars": [{"repo": r.title, "stars": r.stats.get("stars", 0), "url": r.url} for r in sorted(excluded, key=lambda r: -r.stats.get("stars", 0))[:5]],
         "cluster": [
             {"repo": r.title, "url": r.url, "stars": r.stats.get("stars", 0), "language": next((k for k in r.keywords if k in _LANGS), ""),
@@ -301,8 +310,9 @@ def _verdict(idea: str, cluster: list[Asset], stars: list[int], leader: Asset | 
             return f"The search failed ({len(errors)} source errors; see source_errors). Nothing can be concluded about \"{idea}\"."
         tail = f" The strongest repository above max_stars was {excluded.title} ({excluded.stats.get('stars', 0)} stars)." if excluded else ""
         if top_related is not None:
-            return (f"Nothing on GitHub matches the whole of \"{idea}\" in {span}, but the field exists: {related} repositories share "
-                    f"part of the job, the strongest {top_related.title} ({top_related.stats.get('stars', 0)} stars). The combination may be new; "
+            size = f"at least {total:,}" if total > related else f"{related}"
+            return (f"Nothing on GitHub matches the whole of \"{idea}\" in {span}, but the field exists: {size} repositories share "
+                    f"part of the job, the strongest among the fetched {top_related.title} ({top_related.stats.get('stars', 0)} stars). The combination may be new; "
                     f"the parts are not. Read the strongest before building.{tail}")
         return (f"Nothing close to \"{idea}\" found on GitHub in {span}. If that holds after a second search with other words "
                 f"(the search is English and literal), this is new.{tail}")
@@ -321,20 +331,22 @@ def _verdict(idea: str, cluster: list[Asset], stars: list[int], leader: Asset | 
         return (f"One repository does this: {leader.title} ({lead_stars} stars, {life(leader)}). Not a cluster; "
                 f"contribute to it or build the part it lacks.{excl}")
     med = sorted(stars)[n // 2]
+    others = sorted(r.stats.get("stars", 0) for r in cluster if r is not leader)
+    med_others = others[len(others) // 2] if others else 0
     alive = [r for r in cluster if r.date and r.date.isoformat() >= cutoff and r.extra.get("archived") != "yes"]
     about = f"at least {n}" if capped else f"{n}"
     if not alive:
         return (f"\"{idea}\" exists {about} times, all inactive or archived (top {leader.title}, {lead_stars} stars, {life(leader)}). "
                 f"The idea is not new; the field is open. Start from the best of them, with credit.{excl}")
     if lead_stars >= 500:
-        return (f"\"{idea}\" exists: {about} implementations, and {leader.title} ({lead_stars} stars, {life(leader)}) already won. "
+        return (f"\"{idea}\" exists: {about} implementations in {span}, and {leader.title} ({lead_stars} stars, {life(leader)}) already won. "
                 f"Building another one will get the median {med} stars (median of the most-starred matches; the real one is lower). "
                 f"Contribute the missing piece to {leader.title} instead, or build only what nobody has.{excl}")
     if lead_stars >= 50:
-        return (f"\"{idea}\" exists {about} times. The leader is {leader.title} ({lead_stars} stars, {life(leader)}); the other "
-                f"{n - 1} have a median of {med}. They have pieces the leader lacks (only_here); features_nobody_has lists what none has. "
+        rest = f"the other one has {med_others}" if n == 2 else f"the other {n - 1} have a median of {med_others}"
+        return (f"\"{idea}\" exists {about} times in {span}. The leader is {leader.title} ({lead_stars} stars, {life(leader)}); {rest}. They have pieces the leader lacks (only_here); features_nobody_has lists what none has. "
                 f"Contribute the missing piece to the leader, build only what nobody has, or propose a merge (propose_merge).{excl}")
-    return (f"\"{idea}\" exists {about} times; the top has {max(stars)} stars, the median is {med}. "
+    return (f"\"{idea}\" exists {about} times in {span}; the top has {max(stars)} stars, the median is {med}. "
             f"That is {n} people who each built the same thing and got about {med} stars for it. "
             f"The product that would win is the merge: see features_anyone_has and only_here. Propose it (propose_merge) or join the most active one.{excl}")
 
@@ -368,6 +380,8 @@ def _eligible(r: dict[str, Any], me: str | None) -> str | None:
         return "the user's own repository"
     if r["stars"] >= WON_STARS:
         return f"{r['stars']} stars: it has won; contribute to it instead"
+    if (r.get("pushed") or "") < (date.today() - timedelta(days=180)).isoformat():
+        return "inactive (no push in 180 days)"
     return None
 
 
@@ -392,9 +406,13 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
     cutoff = (date.today() - timedelta(days=90)).isoformat()
     alive = [r for r in cluster if (r["pushed"] or "") >= cutoff]
     base = max(alive or cluster, key=lambda r: (r["stars"], r["pushed"] or ""))
+    base_why = "the most-starred of the ones active in the last 90 days" if alive else "the most-starred; none was pushed in the last 90 days"
     others = [r for r in cluster if r["repo"] != base["repo"]]
     authors = sorted({r["owner"] for r in cluster})
+    import hashlib
     name = "merged-" + re.sub(r"[^a-z0-9]+", "-", fold(dup["idea"]))[:40].rsplit("-", 1)[0].strip("-")
+    if name == "merged-":
+        name += hashlib.sha1(dup["idea"].encode()).hexdigest()[:8]
     deadline = (date.today() + timedelta(days=days)).isoformat()
 
     def brings(r: dict[str, Any]) -> str:
@@ -407,8 +425,7 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
     plan_md = [f"# Merge plan: {dup['idea']}", "",
                f"{len(cluster)} repositories solve this. Together they have {plural(total, 'star')}; the median has {plural(median, 'star')}. "
                f"One project with all of their pieces is the one that gets used.", "",
-               f"**Base:** `{base['repo']}` ({plural(base['stars'], 'star')}, last pushed {base['pushed'] or 'unknown'}; the most-starred of the "
-               f"ones active in the last 90 days). Nothing is deleted anywhere; every original repository stays and gets a line \"merged into {name}\" if its author wants.", "",
+               f"**Base:** `{base['repo']}` ({plural(base['stars'], 'star')}, last pushed {base['pushed'] or 'unknown'}; {base_why}). Nothing is deleted anywhere; every original repository stays and gets a line \"merged into {name}\" if its author wants.", "",
                "| from | brings |", "|---|---|"]
     for r in others:
         plan_md.append(f"| `{r['repo']}` | {contributions[r['repo']]} |")

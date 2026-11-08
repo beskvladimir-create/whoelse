@@ -8,7 +8,7 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
-from ..http import http
+from ..http import SourceError, http
 from ..models import Asset, Contact, Person
 
 BASE = "https://api.github.com"
@@ -62,8 +62,13 @@ async def search_repos_meta(query: str, *, since: date | None = None, limit: int
         headers=_headers(),
         fixture_name=f"github_search_{query.lower().replace(' ', '_')[:60]}",
     )
-    items = (data or {}).get("items", []) if isinstance(data, dict) else []
-    total = int((data or {}).get("total_count") or len(items)) if isinstance(data, dict) else len(items)
+    if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+        raise SourceError(f"github search returned no result set for {query!r}")
+    items = [r for r in data["items"] if isinstance(r, dict)]
+    try:
+        total = int(data.get("total_count") or len(items))
+    except (TypeError, ValueError):
+        total = len(items)
     return [repo_to_asset(r) for r in items], total
 
 

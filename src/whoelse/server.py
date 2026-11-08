@@ -395,7 +395,8 @@ async def find_duplicates(idea: str, months: int = 24, max_stars: int | None = N
 
 
 # Plans the user was shown, by plan_id. open_issues posts exactly these texts, never a re-search.
-_plans: dict[str, dict[str, Any]] = {}
+from collections import OrderedDict
+_plans: "OrderedDict[str, dict[str, Any]]" = OrderedDict()
 
 
 def _plan_id(plan: dict[str, Any]) -> str:
@@ -423,6 +424,7 @@ async def propose_merge(idea: str, months: int = 24, max_stars: int | None = Non
         if plan_url and plan.get("plan_url") != plan_url:
             raise ToolError("plan_url differs from the plan the user saw; call without open_issues first, with this plan_url")
         me = await dup.my_login()
+        # idea/months/max_stars are ignored here on purpose: the stored texts are what the user approved
         results, opened = [], 0
         for it in plan["issues"]:
             if opened >= dup.MAX_ISSUES_PER_RUN:
@@ -435,7 +437,8 @@ async def propose_merge(idea: str, months: int = 24, max_stars: int | None = Non
             try:
                 results.append({**it, **(await dup.open_issue(owner, repo, it["title"], it["body"], me=me))})
                 opened += 1
-                await asyncio.sleep(3)   # pace: well under GitHub's content-creation limit
+                if it is not plan["issues"][-1]:
+                    await asyncio.sleep(3)   # pace: well under GitHub's content-creation limit
             except dup.RateLimited as e:
                 results.append({**it, "error": str(e)})
                 results.append({"error": f"run stopped after {opened} issues: {e}; the rest were not attempted"})
@@ -446,6 +449,8 @@ async def propose_merge(idea: str, months: int = 24, max_stars: int | None = Non
 
     idea = dup.clean_idea(idea)
     d = await dup.find_duplicates(idea, months=months, max_stars=max_stars)
+    if d["broad"]:
+        raise ToolError(f"this is a field, not a cluster ({d['search_total']:,} repositories); narrow the idea to the specific job before proposing anything")
     if d["count"] < dup.MIN_CLUSTER_FOR_MERGE:
         return {"verdict": d["verdict"], "cluster": d["cluster"],
                 "note": f"fewer than {dup.MIN_CLUSTER_FOR_MERGE} repositories; contribute to the leader instead of merging"}
@@ -455,6 +460,8 @@ async def propose_merge(idea: str, months: int = 24, max_stars: int | None = Non
         raise ToolError(str(e))
     pid = _plan_id(plan)
     _plans[pid] = {**plan, "plan_url": plan_url}
+    while len(_plans) > 20:
+        _plans.popitem(last=False)
     return {
         "plan_id": pid,
         "duplicates": {k: d[k] for k in ("count", "total_stars", "median_stars", "leader", "features_nobody_has", "verdict")},

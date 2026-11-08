@@ -48,9 +48,9 @@ read them and said yes, from your GitHub account, all at once, so no author is a
 someone else's project: all of them are asked to join one.
 
 GitHub's acceptable use forbids bulk unsolicited content, and so does common sense, so the limits
-are in the code: 3 to 15 living repositories per proposal, at most 10 issues a day, 20 seconds
-apart, never twice to the same repository (a local ledger remembers), never to an archived
-repository or one with issues turned off. One proposal is a conversation; forty is a mailing.
+are in the code: 3 to 15 living repositories per proposal, at most 10 issues a day, 3 seconds
+apart, never twice to the same repository (a local ledger remembers), never to an archived, forked, inactive or
+organisation-owned repository, one with issues turned off, one with 1000+ stars, or your own. One proposal is a conversation; forty is a mailing.
 
 ### Put it in front of the agent
 

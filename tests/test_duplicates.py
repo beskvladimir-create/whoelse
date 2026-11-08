@@ -169,3 +169,36 @@ async def test_empty_cluster_with_related_field_is_not_called_new():
     d = await dup.find_duplicates("sync Claude Code sessions to a wearable")   # nobody does the wearable part
     assert d["count"] == 0 and d["related"]["count"] >= 6
     assert "the field exists" in d["verdict"] and "this is new" not in d["verdict"]
+
+
+async def test_non_result_search_response_is_an_error_not_novelty(monkeypatch):
+    from whoelse.sources import github as gh
+    async def bad(*a, **k):
+        return "oops"
+    monkeypatch.setattr(gh.http, "get_json", bad)
+    d = await dup.find_duplicates(IDEA)
+    assert d["count"] == 0 and d["source_errors"] and "search failed" in d["verdict"]
+
+
+async def test_broad_field_cannot_become_a_merge_proposal():
+    from mcp.server.mcpserver.exceptions import ToolError
+    with pytest.raises(ToolError, match="field, not a cluster"):
+        await server.propose_merge("todo app in rust")
+
+
+def test_verdict_median_is_of_the_others():
+    from whoelse.models import Asset
+    from datetime import date
+    mk = lambda n, s: Asset(kind="repo", title=n, url="", source="github", summary="x", date=date.today(), stats={"stars": s})  # noqa: E731
+    cl = [mk("a/lead", 80), mk("b/x", 4), mk("c/y", 3), mk("d/z", 2)]
+    v = dup._verdict("i", cl, [80, 4, 3, 2], cl[0], months=6, broad=False, total=4, errors=[], excluded=None, capped=False)
+    assert "the other 3 have a median of 3" in v and "6 months" in v
+
+
+def test_inactive_repos_are_not_asked_and_name_never_empty():
+    rows = [_row(f"u{i}/r{i}", 5) for i in range(4)]
+    rows[0]["pushed"] = "2025-01-01"
+    plan = dup.merge_plan(_dup(rows))
+    assert "inactive" in plan["skipped"]["u0/r0"]
+    d = _dup([_row(f"u{i}/r{i}", 5) for i in range(3)]); d["idea"] = "!!! ???"
+    assert dup.merge_plan(d)["name"] != "merged-"
