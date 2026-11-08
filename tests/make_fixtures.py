@@ -282,7 +282,15 @@ for q in ("nl2sql", "anonymization", "qwen", "pii"):
     put(f"arxiv_all-{q}", {"__text__": EMPTY_FEED})
 # --- the network registry: two people waiting, one of them wants what Vladimir wants
 put("network_tree_beskvladimir-create_whoelse-network", {"tree": [
-    {"path": "README.md"}, {"path": "people/ana-ferreira.json"}, {"path": "people/kenji-mori.json"}, {"path": "people/expired.json"}]})
+    {"path": "README.md"}, {"path": "people/ana-ferreira.json"}, {"path": "people/kenji-mori.json"}, {"path": "people/expired.json"}, {"path": "people/yusuf-demir.json"}]})
+put("network_yusuf-demir", {"name": "Yusuf Demir", "contact": "yusuf@boun.example", "site": "", "ids": {"github": "ydemir"},
+    "working_on": ["text-to-SQL for ERP systems"], "keywords": ["text-to-sql", "erp", "turkish"],
+    "wants": [{"format": "compare_note", "topic": "text-to-SQL on closed enterprise data", "by": "2026-12-20"}],
+    "has": ["paper"], "open_to_strangers": True, "languages": ["tr", "en"], "published": "2026-11-03", "expires": "2027-02-03"})
+put("openalex_authors_yusuf_demir", {"results": []})
+put("arxiv_au_yusuf_demir", {"__text__": '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'})
+put("github_user_ydemir", {"login": "ydemir", "name": "Yusuf Demir", "html_url": "https://github.com/ydemir", "email": None, "blog": "", "company": None, "location": None, "type": "User"})
+put("github_repos_ydemir", [])
 put("network_ana-ferreira", {"name": "Ana Ferreira", "contact": "ana@ufmg.example", "site": "", "ids": {"orcid": "0000-0001-0000-0001", "github": "anaferreira"},
     "working_on": ["text-to-SQL for public data portals"], "keywords": ["text-to-sql", "open data", "portuguese"],
     "wants": [{"format": "compare_note", "topic": "text-to-SQL on closed enterprise data", "by": "2026-12-15"}],

@@ -26,7 +26,7 @@ from .config import settings
 from .http import SourceError
 from .models import Candidate, Overlap, Person
 from .network import list_requests, match_requests
-from .profile import build_profile, load_profile
+from .profile import build_profile, fold, load_profile
 from .workspace import build_workspace, create_repo, write_local
 
 
@@ -118,6 +118,12 @@ async def one_pass(*, me_name: str | None = None, dry_run: bool = False) -> list
             pair = "|".join(sorted([mine["name"], o["name"]]))
             if pair in seen:
                 continue
+            # Both watchers see the same match. Exactly one side creates: the one whose name sorts
+            # first. The other side's watcher reports the match and waits for the invitation.
+            if sorted([fold(mine["name"]), fold(o["name"])])[0] != fold(mine["name"]):
+                events.append({"pair": pair, "role": "wait", "note": f"{o['name']} creates the repository; you will be invited"})
+                seen.add(pair)
+                continue
             fmt = (m["common_formats"] or [w.get("format") for w in o.get("wants", [])] or ["compare_note"])[0]
             topic = next((w.get("topic") for w in mine.get("wants", []) if w.get("topic")), None) \
                 or next((w.get("topic") for w in o.get("wants", []) if w.get("topic")), None)
@@ -128,22 +134,26 @@ async def one_pass(*, me_name: str | None = None, dry_run: bool = False) -> list
             )
             files = build_workspace(prof, cand, fmt, topic=topic)
             root = write_local(files)
-            result: dict = {"pair": pair, "format": fmt, "local": str(root)}
+            result: dict = {"pair": pair, "format": fmt, "local": str(root), "role": "create"}
             if not dry_run:
                 try:
                     created = await create_repo(files, invite=(o.get("ids") or {}).get("github"))
                     result.update(created)
                 except SourceError as e:
                     result["repo"] = f"not created: {e}"
-                link = result.get("repo") if str(result.get("repo", "")).startswith("http") else str(root)
+                online = str(result.get("repo", "")).startswith("http")
+                link = result["repo"] if online else str(root)
                 body = (
                     f"{o['name']} wants the same thing you do: {topic or ', '.join(m['shared'][:3])}.\n\n"
                     f"The work has started: {link}\n\n"
                     f"Section 1 is drafted from both of your papers, the table has the published numbers, "
                     f"the plan is 14 days. Say yes by opening an issue titled \"in\" or pushing a commit.\n"
                 )
+                if not online:
+                    body += ("\nThe repository could not be created online (see above), so the other side has NOT been told yet. "
+                             "Push this folder to GitHub (or set GITHUB_TOKEN) and run whoelse-watch again; it will then notify them.\n")
                 result["notified_you"] = notify(f"whoelse: joint work started with {o['name']}", body, mine["contact"])
-                if o.get("contact"):
+                if o.get("contact") and online:
                     body2 = (
                         f"{mine['name']} works on the same problem as you ({topic or ', '.join(m['shared'][:3])}) and has started a joint "
                         f"{fmt.replace('_', ' ')} with your name on it:\n\n{link}\n\n"
@@ -151,7 +161,11 @@ async def one_pass(*, me_name: str | None = None, dry_run: bool = False) -> list
                         f"To decline, ignore this; the work will be finished alone with a citation to yours.\n"
                     )
                     result["notified_them"] = notify(f"{mine['name']} started joint work with you: {fmt.replace('_', ' ')}", body2, o["contact"])
-                seen.add(pair)
+                    seen.add(pair)
+                elif online:
+                    seen.add(pair)
+                else:
+                    result["notified_them"] = "not yet: no online repository to link"
             events.append(result)
     if not dry_run:
         _save_seen(seen)

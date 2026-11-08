@@ -1,0 +1,33 @@
+{
+ "name": "Yusuf Demir",
+ "contact": "yusuf@boun.example",
+ "site": "",
+ "ids": {
+  "github": "ydemir"
+ },
+ "working_on": [
+  "text-to-SQL for ERP systems"
+ ],
+ "keywords": [
+  "text-to-sql",
+  "erp",
+  "turkish"
+ ],
+ "wants": [
+  {
+   "format": "compare_note",
+   "topic": "text-to-SQL on closed enterprise data",
+   "by": "2026-12-20"
+  }
+ ],
+ "has": [
+  "paper"
+ ],
+ "open_to_strangers": true,
+ "languages": [
+  "tr",
+  "en"
+ ],
+ "published": "2026-11-03",
+ "expires": "2027-02-03"
+}

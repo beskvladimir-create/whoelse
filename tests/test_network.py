@@ -16,15 +16,16 @@ from whoelse.workspace import build_workspace, write_local
 async def test_registry_reads_current_requests_only():
     reqs = await net.list_requests()
     names = {r["name"] for r in reqs}
-    assert names == {"Ana Ferreira", "Kenji Mori"}  # expired one dropped
+    assert names == {"Ana Ferreira", "Kenji Mori", "Yusuf Demir"}  # expired one dropped
 
 
 async def test_publish_request_matches_a_stranger_and_tells_the_user_to_wait():
     await server.load_profile("Vladimir Beskorovainyi", github="besk-tech")
     r = await server.publish_request("Vladimir Beskorovainyi", contact="vladimir@besk.tech",
                                      topic="text-to-SQL on closed enterprise data", format_id="compare_note")
-    assert r["network_size"] == 2
-    assert [m["name"] for m in r["mutual_matches"]] == ["Ana Ferreira"]
+    assert r["network_size"] == 3
+    assert {m["name"] for m in r["mutual_matches"]} == {"Ana Ferreira", "Yusuf Demir"}
+    r["mutual_matches"].sort(key=lambda m: m["name"])
     assert "text-to-sql" in r["mutual_matches"][0]["shared"]
     assert r["mutual_matches"][0]["common_formats"] == ["compare_note"]
     assert r["mutual_matches"][0]["they_have_you_dont"] == ["dataset"]
@@ -78,32 +79,63 @@ async def test_start_joint_work_tool_without_token_writes_folder_and_send_facts(
     assert "in" in w["send_this"]["body_facts"]["how_to_join"]
 
 
-async def test_watcher_starts_work_for_mutual_match_and_notifies_both(monkeypatch):
+async def test_watcher_one_creator_per_pair_and_no_stranger_mail_without_online_repo(monkeypatch):
     await server.load_profile("Vladimir Beskorovainyi", github="besk-tech")
     await server.publish_request("Vladimir Beskorovainyi", contact="vladimir@besk.tech",
                                  topic="text-to-SQL on closed enterprise data", format_id="compare_note")
     sent = []
-    monkeypatch.setattr("whoelse.watch.notify", lambda subj, body, to: sent.append((to, subj)) or "stub")
+    monkeypatch.setattr("whoelse.watch.notify", lambda subj, body, to: sent.append((to, subj, body)) or "stub")
     events = await one_pass()
-    started = [e for e in events if "pair" in e]
-    assert len(started) == 1 and started[0]["pair"] == "Ana Ferreira|Vladimir Beskorovainyi"
-    assert started[0]["format"] == "compare_note"
-    assert Path(started[0]["local"]).is_dir()
-    assert {to for to, _ in sent} == {"vladimir@besk.tech", "ana@ufmg.example"}
-    # second pass: nothing new, no duplicate work or mail
+    by_pair = {e["pair"]: e for e in events if "pair" in e}
+    # Ana sorts before Vladimir: she creates, Vladimir waits
+    assert by_pair["Ana Ferreira|Vladimir Beskorovainyi"]["role"] == "wait"
+    # Yusuf sorts after: Vladimir creates
+    y = by_pair["Vladimir Beskorovainyi|Yusuf Demir"]
+    assert y["role"] == "create" and Path(y["local"]).is_dir()
+    # offline: no online repo, so the stranger is NOT emailed a local path; the user is told why
+    tos = [to for to, _, _ in sent]
+    assert tos == ["vladimir@besk.tech"]
+    assert "has NOT been told yet" in sent[0][2]
+    assert y["notified_them"].startswith("not yet")
+    # pair not marked seen until the stranger is reachable, so a later run (with a repo) retries
+    seen = json.loads((settings().home / "watch-seen.json").read_text())
+    assert "Ana Ferreira|Vladimir Beskorovainyi" in seen and "Vladimir Beskorovainyi|Yusuf Demir" not in seen
+
+
+async def test_watcher_with_online_repo_notifies_both_once(monkeypatch):
+    await server.load_profile("Vladimir Beskorovainyi", github="besk-tech")
+    await server.publish_request("Vladimir Beskorovainyi", contact="vladimir@besk.tech",
+                                 topic="text-to-SQL on closed enterprise data", format_id="compare_note")
+    sent = []
+    monkeypatch.setattr("whoelse.watch.notify", lambda subj, body, to: sent.append((to, body)) or "stub")
+
+    async def fake_create(files, invite=None):
+        return {"repo": "https://github.com/besk/demo", "full_name": "besk/demo", "invited": invite}
+    monkeypatch.setattr("whoelse.watch.create_repo", fake_create)
+    events = await one_pass()
+    y = [e for e in events if e.get("pair") == "Vladimir Beskorovainyi|Yusuf Demir"][0]
+    assert y["repo"] == "https://github.com/besk/demo" and y["invited"] == "ydemir"
+    assert {to for to, _ in sent} == {"vladimir@besk.tech", "yusuf@boun.example"}
+    assert all("https://github.com/besk/demo" in b for _, b in sent)
     sent.clear()
-    events = await one_pass()
-    assert not [e for e in events if "pair" in e] and not sent
-    assert json.loads((settings().home / "watch-seen.json").read_text()) == ["Ana Ferreira|Vladimir Beskorovainyi"]
+    await one_pass()
+    assert not sent  # idempotent
 
 
 async def test_watcher_workspace_uses_on_topic_work_from_both_sides():
     await server.load_profile("Vladimir Beskorovainyi", github="besk-tech")
     r = await server.publish_request("Vladimir Beskorovainyi", contact="vladimir@besk.tech",
                                      topic="text-to-SQL on closed enterprise data", format_id="compare_note")
-    assert r["mutual_matches"][0]["shared"] == ["text-to-sql"]
-    events = await one_pass(dry_run=True)
-    root = Path([e for e in events if "pair" in e][0]["local"])
+    assert all(m["shared"] == ["text-to-sql"] for m in r["mutual_matches"])
+    # make Vladimir the creator for Ana too, so the workspace content can be inspected
+    import whoelse.watch as w
+    monkeypatch_fold = w.fold
+    w.fold = lambda n: {"ana ferreira": "zz"}.get(monkeypatch_fold(n), monkeypatch_fold(n))
+    try:
+        events = await one_pass(dry_run=True)
+    finally:
+        w.fold = monkeypatch_fold
+    root = Path([e for e in events if e.get("pair") == "Ana Ferreira|Vladimir Beskorovainyi"][0]["local"])
     paper = (root / "paper" / "paper.md").read_text()
     assert "Production Text-to-SQL" in paper and "Open Data Portals" in paper and "71.2%" in paper
     repro = (root / "repro" / "README.md").read_text()
