@@ -435,9 +435,10 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
              "archived": r.extra.get("archived") == "yes", "issues_disabled": r.extra.get("has_issues") == "no"}
             for r in cluster
         ],
-        "features_anyone_has": [f for f, _ in all_features.most_common()],
+        "features_anyone_has": [f for f, _ in all_features.most_common() if not f.startswith("license")],
+        "licenses": dict(Counter(f[9:] for fs in matrix.values() for f in fs if f.startswith("license: "))),
         "features_nobody_has": nobody_has[:12],
-        "features_note": "from each repository's one-line description and topics, not its README",
+        "features_note": "from each repository's one-line description and topics, not its README; 'nobody' means none of the cluster members listed",
         "verdict": verdict,
         "source_errors": errors,
     }

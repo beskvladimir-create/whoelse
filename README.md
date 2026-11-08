@@ -17,6 +17,8 @@ Runs inside Claude, Cursor, Codex or any MCP client. No sign-up, no profile to f
 pip install git+https://github.com/beskvladimir-create/whoelse
 ```
 
+![whoelse: what the agent says before writing a line](docs/demo.png)
+
 ---
 
 ## The problem
@@ -34,14 +36,17 @@ stop. Ask your agent to build a tool:
 > Build me a CLI that syncs Claude Code sessions across machines.
 
 ```
-"sync Claude Code sessions across machines" exists 45 times. The leader is tawanorg/claude-sync
-(320 stars, encrypted sync through Cloudflare R2). The other 44 have a median of 3 stars. Between
-them they have Google Drive, SSH, Syncthing, Tailscale, Obsidian and git-vault backends, Codex and
-Copilot support, a desktop app; none has all of it, and nobody has tests or CI.
+"a CLI that syncs Claude Code sessions across machines" exists at least 40 times. The leader is
+tawanorg/claude-sync (320 stars, last pushed 2026-10-06); the other 39 have a median of 1.
+Between them: end-to-end encryption, Cloudflare R2, git-backed sync, Google Drive, LAN sync,
+Codex sessions, backup before the 30-day deletion. None of the 40 has a terminal UI, hooks,
+an Obsidian export, mobile, or cost tracking.
 
 Options: contribute the missing backend to claude-sync; build only what nobody has; or propose a
-merge to the 44 authors (propose_merge).
+merge to the small ones (propose_merge).
 ```
+
+(Real output, 2026-11-08, unauthenticated GitHub search.)
 
 That is `find_duplicates`. It searches GitHub for the job the tool does (not the product it serves),
 keeps what is actually the same thing, ranks it, and builds a feature matrix: who has what, what only one of them has, what none of them
