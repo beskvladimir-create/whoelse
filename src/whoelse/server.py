@@ -407,7 +407,7 @@ def _plan_id(plan: dict[str, Any]) -> str:
 @mcp.tool()
 async def propose_merge(idea: str, months: int = 24, max_stars: int | None = None, open_issues: bool = False,
                         plan_url: str | None = None, plan_id: str | None = None, batch: bool = False,
-                        sender_note: str | None = None) -> dict[str, Any]:
+                        sender_note: str | None = None, index_url: str | None = None) -> dict[str, Any]:
     """For a cluster of near-identical small repositories: a merge plan (the living leader as the
     base, what each one brings, every author a maintainer, a deadline) and the text of the issue
     each author would receive in their own repository. First call: returns the plan, the issue texts
@@ -418,7 +418,8 @@ async def propose_merge(idea: str, months: int = 24, max_stars: int | None = Non
     never twice to one repository, never to archived, forked, organisation-owned or 1000+-star
     repositories or ones with issues disabled, never to the user's own. For a cluster above 15,
     batch=true takes the living leader plus the 14 most recently active and defers the rest.
-    sender_note: one sentence on who the user is and why they ask (they may not be one of the authors)."""
+    sender_note: one sentence on who the user is and why they ask (they may not be one of the authors).
+    index_url: where the cluster page lives (an awesome-already-built page), linked in every issue."""
     import asyncio
     if open_issues:
         if not plan_id or plan_id not in _plans:
@@ -462,7 +463,8 @@ async def propose_merge(idea: str, months: int = 24, max_stars: int | None = Non
                 "note": f"{d['leader']['repo']} has {d['leader']['stars']} stars: this field is decided. A merge of the small ones would "
                         f"compete with it; the honest proposal is a contribution to the leader (find_duplicates lists what it lacks)."}
     try:
-        plan = dup.merge_plan(d, plan_url=plan_url, me=await dup.my_login(), batch=batch, sender_note=dup.clean_idea(sender_note) if sender_note else None)
+        plan = dup.merge_plan(d, plan_url=plan_url, me=await dup.my_login(), batch=batch,
+                              sender_note=dup.clean_idea(sender_note) if sender_note else None, index_url=index_url)
     except ValueError as e:
         raise ToolError(str(e))
     pid = _plan_id(plan)

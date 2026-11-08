@@ -541,7 +541,7 @@ def _eligible(r: dict[str, Any], me: str | None) -> str | None:
 
 
 def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = None, me: str | None = None,
-               batch: bool = False, sender_note: str | None = None) -> dict[str, Any]:
+               batch: bool = False, sender_note: str | None = None, index_url: str | None = None) -> dict[str, Any]:
     """From a duplicates cluster: which repo is the base (the living leader), what each other repo
     contributes (its only_here features), who the authors are, and the text of the issue each author
     receives. Nothing is sent by this function. `plan_url` is where the plan will be readable (the
@@ -625,7 +625,8 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
                 f"The median has {plural(median, 'star')}; none has everything.\n\n"
                 f"{role} First release by {deadline}. {plan_ref}\n\n"
                 f"Nothing is deleted. Your repository stays; you decide whether to point it at the merged one.\n\n"
-                f"In? Reply \"in\". Not interested? Ignore this, no follow-up.\n")
+                + (f"The whole cluster, with what each repository has, is listed at {index_url} (your row is yours to fix by pull request).\n\n" if index_url else "")
+                + f"In? Reply \"in\". Not interested? Ignore this, no follow-up.\n")
         if not plan_url:
             body += "\n---\n\n" + plan_text
         issues.append({"repo": r["repo"], "owner": r["owner"], "title": issue_title, "body": body})
