@@ -589,8 +589,9 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
         if len(peers) > 10:
             shown += f" and {len(peers) - 10} more"
         if r["repo"] == base["repo"]:
+            pieces = "; ".join(f"{o['repo']}: {contributions[o['repo']]}" for o in others[:6])
             role = (f"Proposal: one repository with all of us as maintainers, and `{r['repo']}` as the base, because it is the most used "
-                    f"and most active. The others port their pieces ({'; '.join(f'{o['repo']}: {contributions[o['repo']]}' for o in others[:6])}) with their authorship.")
+                    f"and most active. The others port their pieces ({pieces}) with their authorship.")
         else:
             role = (f"Proposal: one repository with all of us as maintainers, `{base['repo']}` as the base ({plural(base['stars'], 'star')}), "
                     f"your piece ported with your authorship. Yours has what the others don't: **{brings(r)}**.")
