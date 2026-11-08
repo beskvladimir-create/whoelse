@@ -1,0 +1,18 @@
+[
+ {
+  "full_name": "anaferreira/portal-sql",
+  "html_url": "https://github.com/anaferreira/portal-sql",
+  "description": "Text-to-SQL over open data portals",
+  "topics": [
+   "text-to-sql"
+  ],
+  "language": "Python",
+  "stargazers_count": 9,
+  "forks_count": 1,
+  "pushed_at": "2026-06-01T00:00:00Z",
+  "owner": {
+   "login": "anaferreira"
+  },
+  "fork": false
+ }
+]

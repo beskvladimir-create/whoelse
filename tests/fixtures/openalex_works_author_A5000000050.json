@@ -1,0 +1,121 @@
+{
+ "results": [
+  {
+   "id": "https://openalex.org/W50",
+   "doi": "https://doi.org/10.0000/W50",
+   "display_name": "Text-to-SQL for Open Data Portals in Portuguese",
+   "publication_date": "2026-05-01",
+   "abstract_inverted_index": {
+    "We": [
+     0
+    ],
+    "reach": [
+     1
+    ],
+    "71.2%": [
+     2
+    ],
+    "execution": [
+     3
+    ],
+    "accuracy": [
+     4
+    ],
+    "on": [
+     5
+    ],
+    "1,200": [
+     6
+    ],
+    "questions": [
+     7
+    ],
+    "over": [
+     8
+    ],
+    "public": [
+     9
+    ],
+    "data": [
+     10
+    ],
+    "portals": [
+     11
+    ],
+    "with": [
+     12
+    ],
+    "a": [
+     13
+    ],
+    "7B": [
+     14
+    ],
+    "open": [
+     15
+    ],
+    "model": [
+     16
+    ],
+    "and": [
+     17
+    ],
+    "schema": [
+     18
+    ],
+    "pruning.": [
+     19
+    ]
+   },
+   "authorships": [
+    {
+     "author": {
+      "id": "https://openalex.org/A5000000050",
+      "display_name": "Ana Ferreira",
+      "orcid": "https://orcid.org/0000-0001-0000-0001"
+     },
+     "institutions": [
+      {
+       "display_name": "Universidade Federal de Minas Gerais",
+       "country_code": "BR"
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10181",
+     "display_name": "Natural Language Interfaces to Databases",
+     "score": 0.99
+    }
+   ],
+   "keywords": [
+    {
+     "id": "https://openalex.org/keywords/text-to-sql",
+     "display_name": "text-to-sql",
+     "score": 0.5
+    },
+    {
+     "id": "https://openalex.org/keywords/open-data",
+     "display_name": "open data",
+     "score": 0.5
+    },
+    {
+     "id": "https://openalex.org/keywords/portuguese",
+     "display_name": "portuguese",
+     "score": 0.5
+    }
+   ],
+   "cited_by_count": 3,
+   "primary_location": {
+    "source": {
+     "display_name": "arXiv"
+    },
+    "landing_page_url": "https://doi.org/10.0000/W50"
+   },
+   "best_oa_location": {
+    "landing_page_url": "https://arxiv.org/abs/W50"
+   }
+  }
+ ]
+}

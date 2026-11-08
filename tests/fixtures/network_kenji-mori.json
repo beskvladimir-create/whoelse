@@ -1,0 +1,32 @@
+{
+ "name": "Kenji Mori",
+ "contact": "kenji@example.jp",
+ "site": "",
+ "ids": {
+  "github": "kmori"
+ },
+ "working_on": [
+  "protein folding"
+ ],
+ "keywords": [
+  "protein folding",
+  "alphafold"
+ ],
+ "wants": [
+  {
+   "format": "joint_benchmark",
+   "topic": "folding benchmarks",
+   "by": ""
+  }
+ ],
+ "has": [
+  "repo"
+ ],
+ "open_to_strangers": true,
+ "languages": [
+  "ja",
+  "en"
+ ],
+ "published": "2026-11-01",
+ "expires": "2027-02-01"
+}

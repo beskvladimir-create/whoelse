@@ -19,6 +19,9 @@ from .models import Candidate, Profile
 from .peers import add_peer as _add_peer, load_peers, remove_peer as _remove_peer, whats_new
 from .profile import build_profile, list_profiles, load_profile as _load_profile, profile_summary, save_profile
 from .sources import card as card_src
+from . import network as net
+from .workspace import build_workspace, create_repo, write_local
+from .http import SourceError
 
 INSTRUCTIONS = """You've been working on something for months. Somewhere, three other people are working on
 the same thing. None of you know. whoelse finds them, says what you could build together, and
@@ -240,6 +243,91 @@ async def make_card(
 async def list_known() -> dict[str, Any]:
     """Profiles built so far and peers being followed."""
     return {"profiles": list_profiles(), "peers": list(load_peers().values())}
+
+
+@mcp.tool()
+async def publish_request(
+    name: str,
+    contact: str,
+    topic: str,
+    format_id: str = "compare_note",
+    by: str | None = None,
+    site: str = "",
+    languages: list[str] | None = None,
+) -> dict[str, Any]:
+    """Join the network: publish what the user wants to build and with whom. From then on, anyone
+    who installs whoelse with the same problem is matched to them automatically, and the joint
+    work starts by itself; the user just has to wait. Opens a pull request to the public registry
+    when GITHUB_TOKEN is set; otherwise writes the file and says where to put it."""
+    prof = _need_profile(name)
+    valid = {f[0] for f in FORMATS}
+    if format_id not in valid:
+        raise ToolError(f"format_id must be one of {sorted(valid)}")
+    req = net.make_request(prof, contact=contact, site=site, languages=languages,
+                           wants=[{"format": format_id, "topic": topic, "by": by or ""}])
+    local = net.save_request_locally(req)
+    out: dict[str, Any] = {"request": req, "saved_locally": str(local)}
+    try:
+        others = await net.list_requests()
+    except SourceError as e:
+        others = []
+        out["registry_note"] = str(e)
+    matches = net.match_requests(req, others)
+    out["network_size"] = len(others)
+    out["mutual_matches"] = [
+        {"name": m["request"]["name"], "shared": m["shared"], "common_formats": m["common_formats"], "they_have_you_dont": m["they_have_you_dont"]}
+        for m in matches[:5]
+    ]
+    try:
+        out["published"] = await net.publish_via_pr(req)
+    except SourceError as e:
+        out["published"] = {
+            "how": "manual",
+            "why": str(e),
+            "do_this": f"Add the file {local} as {net.request_path(prof.name)} in https://github.com/{net.registry_repo()} "
+                       f"(fork, add, pull request), or set GITHUB_TOKEN and call publish_request again.",
+        }
+    out["what_happens_now"] = net.waiting_text(req, len(others), len(matches), contact)
+    out["keep_watching"] = "Run `whoelse-watch --loop 6h` (or add it to cron/launchd). It checks the network and starts the work when a match appears."
+    return out
+
+
+@mcp.tool()
+async def start_joint_work(name: str, candidate_index: int, format_id: str, create_github_repo: bool = True) -> dict[str, Any]:
+    """Start the work before the first message: a repository with the paper outline, section 1
+    drafted from both sides' published abstracts, the comparison table with published numbers,
+    a reproduction skeleton pointing at both codebases, a 14-day plan, and both names on it.
+    Creates the GitHub repository with the user's token (and invites the other side if their
+    GitHub login is known); otherwise writes the folder and says what to do. The other person
+    then receives a link to a third of a finished work, not a letter."""
+    prof, c = _need_candidate(name, candidate_index)
+    valid = {f[0] for f in FORMATS}
+    if format_id not in valid:
+        raise ToolError(f"format_id must be one of {sorted(valid)}")
+    files = build_workspace(prof, c, format_id)
+    root = write_local(files)
+    out: dict[str, Any] = {"local_folder": str(root), "files": sorted(k for k in files if k != "__name__"), "with": c.person.name}
+    if create_github_repo:
+        try:
+            out.update(await create_repo(files, invite=c.person.ids.get("github")))
+        except SourceError as e:
+            out["repo"] = f"not created: {e}. The folder is complete; `git init && gh repo create` in it, or set GITHUB_TOKEN."
+    link = out.get("repo") if str(out.get("repo", "")).startswith("http") else str(root)
+    to = (c.person.card.contact if c.person.card and c.person.card.contact else None) or c.person.contact.email
+    out["send_this"] = {
+        "to": to,
+        "to_provenance": c.person.contact.provenance.get("email") or ("whoelse card" if c.person.card else None),
+        "fallbacks": [u for u in (c.person.contact.website, c.person.contact.github, c.person.contact.huggingface) if u],
+        "subject": f"Started a joint {format_id.replace('_', ' ')} with your name on it",
+        "body_facts": {
+            "link": link,
+            "what_is_there": "outline; section 1 drafted from both papers; comparison table with published numbers; repro skeleton; 14-day plan",
+            "how_to_join": "open an issue titled \"in\" or push a commit",
+            "how_to_decline": "ignore it; it will be finished alone with a citation to your work",
+        },
+        "rule": "Three sentences, the link, one yes/no question. Sent by the user, from their own address.",
+    }
+    return out
 
 
 @mcp.prompt()

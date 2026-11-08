@@ -18,6 +18,36 @@ Nobody is working alone on purpose. It just turns out that way: you publish, not
 
 whoelse replaces luck with a lookup.
 
+## How it connects strangers
+
+Finding people is the easy half. whoelse is built around the hard half: two people who have never
+heard of each other end up working on one thing, fast.
+
+**1. The work starts before the first message.** `start_joint_work` builds a repository with the
+paper outline, section 1 drafted from both sides' published abstracts, a comparison table holding
+the numbers each side already published, a reproduction script pointing at both codebases, both
+names on the byline, and a 14-day plan. The other person receives a link to a third of a finished
+work. Saying yes is opening an issue titled "in". Saying no is ignoring it: after 14 days you
+finish alone and cite them.
+
+**2. Mutual matching without any letters.** `publish_request` puts what you want to build into an
+open registry (one JSON file per person, in a public GitHub repository; no account with us, no
+server). Anyone who installs whoelse with the same problem is matched to you. When both sides want
+the same thing, the watcher starts the work by itself and sends both of you the link.
+
+**3. Nobody falls out of the queue.** If there is no match today, whoelse says so plainly:
+
+> Your request is published. 37 people are waiting in the network, none on text-to-SQL yet. When
+> one joins, the work starts by itself and a link goes to you@example.org. Nothing to do; just
+> don't remove whoelse.
+
+`whoelse-watch --loop 6h` keeps checking. The link arrives by email (your own SMTP, or GitHub's own
+notification when the repository is created and you are invited).
+
+**4. Strangers, by design.** People you already publish with are listed separately and never
+proposed. Priority goes to a different institution, a different country, and a different kind of
+asset: your code against their data, their paper against your system.
+
 ## What you get
 
 Ask your agent:
@@ -25,27 +55,31 @@ Ask your agent:
 > Load my profile: Ada Example, ORCID 0000-0002-1825-0097. Who else is working on this?
 
 ```
-7 people are working on what Ada Example is working on (text-to-SQL; schema linking).
+7 people are working on what Ada Example is working on (text-to-sql; schema linking).
 4 can be written to today, 1 of them published a whoelse card and said what they're open to.
 
- 0. Nikhil Rao (IIT Madras): same topic; active 2026-09; they have a dataset you don't.   reach: email
- 1. Amine Mhedhbi (Polytechnique Montréal): same topic; publishes a whoelse card.         reach: card ✓
- 2. Paolo Papotti (EURECOM): same topic; active 2026-05.                                   reach: site/github
+ 0. Nikhil Rao (IIT Madras): same problem: open-weight models, text-to-sql; active 2026-09.   reach: email
+ 1. Amine Mhedhbi (Polytechnique Montréal): same problem: text-to-sql; publishes a whoelse card. reach: card ✓
+ 2. Paolo Papotti (EURECOM): same problem: text-to-sql; active 2026-11.                        reach: site/github
 ```
 
-> What could Amine and I do together?
+> Start a comparison note with Amine.
 
 ```
- fit  format             effort  what
- 2.0  Joint benchmark    weeks   Pool your data or evaluation code into one benchmark with a leaderboard.
- 1.4  Comparison note    days    A short joint write-up comparing your two approaches on the same problem.
- 1.1  Talk together      days    A two-person talk or a podcast episode where you interview each other.
+Repository: github.com/ada/example-mhedhbi-text-to-sql
+  paper/paper.md     outline; section 1 drafted from both abstracts; table with published numbers
+  repro/run.py       both methods, same data, same metric; each side fills its half
+  PLAN.md            14 days to a preprint
+  CITATION.cff       both names
+Send this: three sentences, the link, one yes/no question. To: amine.mhedhbi@polymtl.ca (from his whoelse card)
 ```
-plus what each side has, venues in common, and how to reach them, with the source of every contact.
 
-> Draft the message.
+> Publish my request: a comparison note on text-to-SQL for closed enterprise data, by December.
 
-Your agent writes it in your voice: under 180 words, one concrete artefact of theirs, one of yours, the format in a sentence, one yes/no question. You read it. You send it, from your own address, to one person.
+```
+Your request is published. 2 people are waiting in the network; 1 wants what you want: Ana Ferreira
+(UFMG), text-to-sql, has a dataset you don't. Joint work can start now.
+```
 
 ## How it finds people
 
@@ -72,6 +106,21 @@ Only through what the person published about themselves, and every contact says 
 - Their own website: a whoelse card, if they have one
 
 arXiv submitter emails are never touched. arXiv's terms forbid using them for unsolicited contact, and we don't need them.
+
+## The network
+
+A public GitHub repository, `beskvladimir-create/whoelse-network`, with one JSON file per person
+under `people/`. Your agent opens the pull request (with your `GITHUB_TOKEN`), or writes the file
+and tells you where to put it. Requests expire after three months unless renewed. Reading needs no
+account. There is no server and nothing to sign up for; the repository is the directory.
+
+`whoelse-watch` reads it, matches your request against everyone else's, and when two people want
+the same thing it builds the workspace, creates the repository, invites the other side, and emails
+both. Run it from cron or launchd:
+
+```
+0 */6 * * *  whoelse-watch
+```
 
 ## The card: connected mode without a server
 
@@ -103,6 +152,8 @@ Once you've decided someone is one of yours (`add_peer`), whoelse watches what t
 | `joint_work_brief` | one person: the evidence, what each side has, formats ranked by fit and effort, venues in common |
 | `draft_outreach` | facts and structure for the first message; your agent writes it, you send it |
 | `add_peer`, `remove_peer`, `whats_new_from_peers` | your people and what they shipped this month |
+| `publish_request` | join the network: what you want to build, with whom, by when |
+| `start_joint_work` | a repository with a third of the work done and both names on it |
 | `make_card` | your `/.well-known/whoelse.json` |
 | `list_known` | profiles and peers on this machine |
 

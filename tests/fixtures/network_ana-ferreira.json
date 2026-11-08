@@ -1,0 +1,35 @@
+{
+ "name": "Ana Ferreira",
+ "contact": "ana@ufmg.example",
+ "site": "",
+ "ids": {
+  "orcid": "0000-0001-0000-0001",
+  "github": "anaferreira"
+ },
+ "working_on": [
+  "text-to-SQL for public data portals"
+ ],
+ "keywords": [
+  "text-to-sql",
+  "open data",
+  "portuguese"
+ ],
+ "wants": [
+  {
+   "format": "compare_note",
+   "topic": "text-to-SQL on closed enterprise data",
+   "by": "2026-12-15"
+  }
+ ],
+ "has": [
+  "paper",
+  "dataset"
+ ],
+ "open_to_strangers": true,
+ "languages": [
+  "pt",
+  "en"
+ ],
+ "published": "2026-11-01",
+ "expires": "2027-02-01"
+}

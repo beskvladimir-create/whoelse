@@ -1,0 +1,11 @@
+{
+ "name": "Old Person",
+ "contact": "x@y",
+ "keywords": [
+  "text-to-sql"
+ ],
+ "wants": [],
+ "has": [],
+ "published": "2025-01-01",
+ "expires": "2025-04-01"
+}

@@ -1,0 +1,16 @@
+{
+ "tree": [
+  {
+   "path": "README.md"
+  },
+  {
+   "path": "people/ana-ferreira.json"
+  },
+  {
+   "path": "people/kenji-mori.json"
+  },
+  {
+   "path": "people/expired.json"
+  }
+ ]
+}

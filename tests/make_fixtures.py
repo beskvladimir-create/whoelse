@@ -280,4 +280,26 @@ for q in ("nl2sql", "anonymization", "qwen", "pii"):
     put(f"hf_model_search_{q}", [])
     put(f"hf_dataset_search_{q}", [])
     put(f"arxiv_all-{q}", {"__text__": EMPTY_FEED})
+# --- the network registry: two people waiting, one of them wants what Vladimir wants
+put("network_tree_beskvladimir-create_whoelse-network", {"tree": [
+    {"path": "README.md"}, {"path": "people/ana-ferreira.json"}, {"path": "people/kenji-mori.json"}, {"path": "people/expired.json"}]})
+put("network_ana-ferreira", {"name": "Ana Ferreira", "contact": "ana@ufmg.example", "site": "", "ids": {"orcid": "0000-0001-0000-0001", "github": "anaferreira"},
+    "working_on": ["text-to-SQL for public data portals"], "keywords": ["text-to-sql", "open data", "portuguese"],
+    "wants": [{"format": "compare_note", "topic": "text-to-SQL on closed enterprise data", "by": "2026-12-15"}],
+    "has": ["paper", "dataset"], "open_to_strangers": True, "languages": ["pt", "en"], "published": "2026-11-01", "expires": "2027-02-01"})
+put("network_kenji-mori", {"name": "Kenji Mori", "contact": "kenji@example.jp", "site": "", "ids": {"github": "kmori"},
+    "working_on": ["protein folding"], "keywords": ["protein folding", "alphafold"],
+    "wants": [{"format": "joint_benchmark", "topic": "folding benchmarks", "by": ""}],
+    "has": ["repo"], "open_to_strangers": True, "languages": ["ja", "en"], "published": "2026-11-01", "expires": "2027-02-01"})
+ANA = ("A5000000050", "Ana Ferreira", "0000-0001-0000-0001", "Universidade Federal de Minas Gerais", "BR")
+put("openalex_author_orcid_0000-0001-0000-0001", {"id": "https://openalex.org/A5000000050", "display_name": "Ana Ferreira", "orcid": "https://orcid.org/0000-0001-0000-0001", "works_count": 2, "last_known_institutions": [{"display_name": "Universidade Federal de Minas Gerais", "country_code": "BR"}]})
+put("openalex_works_author_A5000000050", {"results": [
+    work("W50", "Text-to-SQL for Open Data Portals in Portuguese", "2026-05-01", [ANA], [T_SQL], ["text-to-sql", "open data", "portuguese"], 3, "arXiv",
+         "We reach 71.2% execution accuracy on 1,200 questions over public data portals with a 7B open model and schema pruning."),
+]})
+put("arxiv_au_ana_ferreira", {"__text__": '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'})
+put("github_user_anaferreira", {"login": "anaferreira", "name": "Ana Ferreira", "html_url": "https://github.com/anaferreira", "email": None, "blog": "", "company": "UFMG", "location": "Belo Horizonte", "type": "User"})
+put("github_repos_anaferreira", [{"full_name": "anaferreira/portal-sql", "html_url": "https://github.com/anaferreira/portal-sql", "description": "Text-to-SQL over open data portals", "topics": ["text-to-sql"], "language": "Python", "stargazers_count": 9, "forks_count": 1, "pushed_at": "2026-06-01T00:00:00Z", "owner": {"login": "anaferreira"}, "fork": False}])
+put("orcid_person_0000-0001-0000-0001", {"emails": {"email": []}, "researcher-urls": {"researcher-url": []}})
+put("network_expired", {"name": "Old Person", "contact": "x@y", "keywords": ["text-to-sql"], "wants": [], "has": [], "published": "2025-01-01", "expires": "2025-04-01"})
 print("fixtures:", len(list(FX.glob("*.json"))))

@@ -27,6 +27,7 @@ dev = ["pytest>=8", "pytest-asyncio>=0.23"]
 
 [project.scripts]
 whoelse = "whoelse.server:main"
+whoelse-watch = "whoelse.watch:main"
 
 [project.urls]
 Homepage = "https://github.com/beskvladimir-create/whoelse"

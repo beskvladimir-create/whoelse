@@ -514,9 +514,16 @@ async def find_overlaps(
     scored.sort(key=lambda x: -x[0])
 
     top = [p for _, p, _ in scored[: max(limit, enrich_top)]]
-    by_name_budget = 8 if not settings().github_token else enrich_top
+    # By-name GitHub lookups are the scarce resource (10 searches/min without a token). Spend them
+    # only where they can pay off: people with a full name and no other way to reach them.
+    budget = 8 if not settings().github_token else enrich_top
+    eligible: set[int] = set()
+    for i, p in enumerate(top[:enrich_top]):
+        if lookup_github_by_name and len(_norm_name(p.name).split()) >= 2 and not p.ids.get("github") and not p.contact.github:
+            if len(eligible) < budget:
+                eligible.add(i)
     await asyncio.gather(*(
-        _enrich_safe(p, me, errors, lookup_github_by_name=lookup_github_by_name and i < by_name_budget)
+        _enrich_safe(p, me, errors, lookup_github_by_name=(i in eligible))
         for i, p in enumerate(top[:enrich_top])
     ))
     top = [p for p in top if not pool.is_me(p)]  # enrichment may have revealed it was the user

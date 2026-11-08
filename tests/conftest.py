@@ -19,6 +19,6 @@ def fixtures_built():
 
 @pytest.fixture(autouse=True)
 def offline(tmp_path):
-    reset_settings(Settings(home=tmp_path / "home", fixtures_dir=ROOT / "tests" / "fixtures", mailto=""))
+    reset_settings(Settings(home=tmp_path / "home", fixtures_dir=ROOT / "tests" / "fixtures", mailto="", github_token=""))
     yield
     reset_settings(None)
