@@ -126,3 +126,26 @@ only phrases of two or more words go to code, model and preprint search, and a h
 phrase contiguously in its name, description or tags; the keyword-search floor (0.15) earns no
 freshness. Lesson kept: a unit test on score() does not catch a loss at the discovery stage;
 the live run does.
+
+## 2026-11-08, distribution
+
+Vladimir's constraint, stated plainly: posting on his own channels has never moved anything, for any
+of his products. So the channels used are the ones where other people's audiences or the product
+itself bring the reader: a pull request to awesome-mcp-servers (Research section, #18892), a listing
+request on mcp.so (#6933), a release pipeline that publishes to PyPI by trusted publishing and to the
+official MCP Registry by GitHub OIDC on one tag (the user must register the pending publisher on PyPI
+once), six cluster pages under docs/clusters generated from real runs (pages people search for, each
+pointing back), and the product's own hands: propose_merge rounds to real authors, 10 issues a day,
+every text shown to the user first. Not done, by rule: Glama and Smithery need an account sign-in
+(his action); awesome-agent-skills refuses new skills without usage (submit in a month). The
+ceiling in this niche is known: idea-reality-mcp, 830 stars in eight months.
+
+Preparing the first round exposed four more things in the matcher and the plan: a cluster over 15
+is split into a batch (the living leader plus the most recently active) rather than refused; a
+sender who is not one of the authors says so in the first line ("Who is asking"); what a repository
+brings is its own description when no feature is unique, never an invented "working implementation";
+the merge target is the base repository, not a repository that does not exist. In the matcher: the
+verb of the idea is required but not counted (a note-UID generator is not a site generator), a
+distinctive job word must match (sessions-to-a-wearable is about the wearable), technical tokens
+(pii, nl2sql) are sharp for membership but cannot alone name a related repository ("mcp server"),
+and no merge is proposed where a 1000+-star leader has decided the field.
