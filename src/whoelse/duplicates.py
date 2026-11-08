@@ -532,7 +532,7 @@ def _eligible(r: dict[str, Any], me: str | None) -> str | None:
 
 
 def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = None, me: str | None = None,
-               batch: bool = False) -> dict[str, Any]:
+               batch: bool = False, sender_note: str | None = None) -> dict[str, Any]:
     """From a duplicates cluster: which repo is the base (the living leader), what each other repo
     contributes (its only_here features), who the authors are, and the text of the issue each author
     receives. Nothing is sent by this function. `plan_url` is where the plan will be readable (the
@@ -566,16 +566,14 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
     base_why = "the most-starred of the ones active in the last 90 days" if alive else "the most-starred; none was pushed in the last 90 days"
     others = [r for r in cluster if r["repo"] != base["repo"]]
     authors = sorted({r["owner"] for r in cluster})
-    import hashlib
-    name = "merged-" + re.sub(r"[^a-z0-9]+", "-", fold(dup["idea"]))[:40].rsplit("-", 1)[0].strip("-")
-    if name == "merged-":
-        name += hashlib.sha1(dup["idea"].encode()).hexdigest()[:8]
+    name = base["repo"]   # the merge happens into the base; nobody is asked to join a repository that does not exist
     deadline = (date.today() + timedelta(days=days)).isoformat()
 
     def brings(r: dict[str, Any]) -> str:
         if r["only_here"]:
             return ", ".join(r["only_here"])
-        return "a working implementation" if r.get("summary") else "a working implementation (no description; ask)"
+        # nothing in the feature vocabulary is unique to it: quote its own description instead of inventing a feature
+        return f"per its description: {r['summary'][:120]}" if r.get("summary") else "a working implementation (no description; ask)"
 
     contributions = {r["repo"]: brings(r) for r in others}
     plural = lambda n, w: f"{n} {w}" + ("" if n == 1 else "s")  # noqa: E731
@@ -583,6 +581,7 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
                f"{len(cluster)} repositories solve this. Together they have {plural(total, 'star')}; the median has {plural(median, 'star')}. "
                f"One project with all of their pieces is the one that gets used.", "",
                f"**Base:** `{base['repo']}` ({plural(base['stars'], 'star')}, last pushed {base['pushed'] or 'unknown'}; {base_why}). Nothing is deleted anywhere; every original repository stays and gets a line \"merged into {name}\" if its author wants.", "",
+               *( [f"**Who is asking:** {sender_note}", ""] if sender_note else [] ),
                "| from | brings |", "|---|---|"]
     for r in others:
         plan_md.append(f"| `{r['repo']}` | {contributions[r['repo']]} |")
@@ -606,9 +605,10 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
                     f"and most active. The others port their pieces ({pieces}) with their authorship.")
         else:
             role = (f"Proposal: one repository with all of us as maintainers, `{base['repo']}` as the base ({plural(base['stars'], 'star')}), "
-                    f"your piece ported with your authorship. Yours has what the others don't: **{brings(r)}**.")
+                    f"your piece ported with your authorship. What yours brings: **{brings(r)}**.")
         more = f" (this round asks {len(cluster)} of them; the rest follow)" if deferred else ""
-        body = (f"Hi {r['owner']},\n\n"
+        who = f"{sender_note}\n\n" if sender_note else ""
+        body = (f"Hi {r['owner']},\n\n{who}"
                 f"`{r['repo']}` is one of {n_all} repositories that solve \"{dup['idea']}\": {shown}{more}. "
                 f"The median has {plural(median, 'star')}; none has everything.\n\n"
                 f"{role} First release by {deadline}. {plan_ref}\n\n"

@@ -201,7 +201,7 @@ def test_inactive_repos_are_not_asked_and_name_never_empty():
     plan = dup.merge_plan(_dup(rows))
     assert "inactive" in plan["skipped"]["u0/r0"]
     d = _dup([_row(f"u{i}/r{i}", 5) for i in range(3)]); d["idea"] = "!!! ???"
-    assert dup.merge_plan(d)["name"] != "merged-"
+    assert dup.merge_plan(d)["name"] == dup.merge_plan(d)["base"]
 
 
 def test_hyphen_parts_count_once_and_actions_are_required():
