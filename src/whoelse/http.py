@@ -83,6 +83,7 @@ class Http:
         headers: dict[str, str] | None = None,
         fixture_name: str | None = None,
         accept: str = "application/json",
+        cache_hours: int | None = None,
     ) -> Any:
         """GET and parse JSON (or raw text when accept != json). Cached on disk by URL+params."""
         s = settings()
@@ -100,9 +101,10 @@ class Http:
         headers_sig = (headers or {}).get("Authorization", "")[:8]
         key = _cache_key(url, params, headers_sig, accept)
         cache_path = s.cache_dir / f"{key}.json"
-        if cache_path.exists():
+        ttl = s.cache_hours if cache_hours is None else cache_hours
+        if cache_path.exists() and ttl > 0:
             age_h = (time.time() - cache_path.stat().st_mtime) / 3600
-            if age_h < s.cache_hours:
+            if age_h < ttl:
                 try:
                     cached = json.loads(cache_path.read_text())
                     if isinstance(cached, dict) and "__text__" in cached:

@@ -1,10 +1,15 @@
 {
  "name": "Old Person",
- "contact": "x@y",
+ "contact": "x@y.example",
  "keywords": [
   "text-to-sql"
  ],
- "wants": [],
+ "wants": [
+  {
+   "format": "compare_note",
+   "topic": "text-to-sql"
+  }
+ ],
  "has": [],
  "published": "2025-01-01",
  "expires": "2025-04-01"

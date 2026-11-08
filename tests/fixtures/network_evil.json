@@ -1,0 +1,16 @@
+{
+ "name": [
+  "Evil",
+  "List"
+ ],
+ "contact": "a@b.example, c@d.example",
+ "ids": [],
+ "keywords": "text-to-sql",
+ "wants": [
+  "compare_note"
+ ],
+ "has": [
+  "paper"
+ ],
+ "expires": 2099
+}

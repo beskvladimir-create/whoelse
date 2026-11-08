@@ -4,16 +4,28 @@
    "path": "README.md"
   },
   {
-   "path": "people/ana-ferreira.json"
+   "path": "people/ana-ferreira.json",
+   "sha": "a1"
   },
   {
-   "path": "people/kenji-mori.json"
+   "path": "people/kenji-mori.json",
+   "sha": "k1"
   },
   {
-   "path": "people/expired.json"
+   "path": "people/expired.json",
+   "sha": "e1"
   },
   {
-   "path": "people/yusuf-demir.json"
+   "path": "people/yusuf-demir.json",
+   "sha": "y1"
+  },
+  {
+   "path": "people/evil.json",
+   "sha": "v1"
+  },
+  {
+   "path": "people/yuyu-luo.json",
+   "sha": "i1"
   }
  ]
 }

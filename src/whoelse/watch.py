@@ -5,9 +5,17 @@ just don't remove whoelse.
     whoelse-watch            # one pass; exit 0
     whoelse-watch --loop 6h  # keep running
 
-Notification: email through the user's own SMTP (WHOELSE_SMTP_HOST/PORT/USER/PASS, from the
-user's own address), else a line on stdout and a file in ~/.whoelse/inbox/. GitHub itself also
-emails both sides when a repository is created and a collaborator invited.
+Rules that keep strangers safe:
+  * a request acts on nobody until `network.verified()` holds (GitHub profile name == request name);
+  * exactly one side creates the repository: the one whose name sorts first; the other side waits,
+    checks for the invitation on later passes, and takes over after WAIT_DAYS without it;
+  * an existing repository is never overwritten; the stranger is emailed only with a public link,
+    and only once; the user is emailed once per pair;
+  * state is saved after every pair, so an SMTP failure cannot replay anything.
+
+Notification: email through the user's own SMTP (WHOELSE_SMTP_HOST/PORT/USER/PASS/FROM), else a
+file in ~/.whoelse/inbox/. GitHub itself also emails both sides when a repository is created and
+a collaborator invited.
 """
 
 from __future__ import annotations
@@ -18,16 +26,20 @@ import json
 import os
 import smtplib
 import time
-from datetime import date
+from datetime import date, datetime
 from email.message import EmailMessage
 from pathlib import Path
+from typing import Any
 
 from .config import settings
-from .http import SourceError
+from .http import SourceError, http
 from .models import Candidate, Overlap, Person
-from .network import list_requests, match_requests
+from .network import Request, list_requests, load_local_requests, match_requests, verified
 from .profile import build_profile, fold, load_profile
-from .workspace import build_workspace, create_repo, write_local
+from .sources import github as gh
+from .workspace import build_workspace, create_repo, repo_name, write_local
+
+WAIT_DAYS = 3
 
 
 def _inbox() -> Path:
@@ -36,34 +48,48 @@ def _inbox() -> Path:
     return d
 
 
-def _seen_path() -> Path:
-    return settings().home / "watch-seen.json"
+def _state_path() -> Path:
+    return settings().home / "watch-state.json"
 
 
-def _load_seen() -> set[str]:
-    p = _seen_path()
-    return set(json.loads(p.read_text())) if p.exists() else set()
+def load_state() -> dict[str, dict[str, Any]]:
+    p = _state_path()
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text())
+    except ValueError:
+        return {}
 
 
-def _save_seen(s: set[str]) -> None:
-    _seen_path().write_text(json.dumps(sorted(s)))
+def save_state(state: dict[str, dict[str, Any]]) -> None:
+    _state_path().write_text(json.dumps(state, indent=2, ensure_ascii=False, default=str))
 
 
 def notify(subject: str, body: str, to: str) -> str:
-    """Email if SMTP is configured; always drop a copy in the inbox folder."""
-    stamp = date.today().isoformat() + "-" + str(int(time.time()))
+    """Email if SMTP is fully configured (host and a From address of the user's own); always drop a
+    copy in the inbox folder. Never forges the recipient as sender."""
+    subject = subject.replace("\r", " ").replace("\n", " ")[:200]
+    stamp = date.today().isoformat() + "-" + str(int(time.time() * 1000))
     (_inbox() / f"{stamp}.txt").write_text(f"To: {to}\nSubject: {subject}\n\n{body}")
     host = os.environ.get("WHOELSE_SMTP_HOST")
-    if not host:
+    sender = os.environ.get("WHOELSE_SMTP_FROM") or os.environ.get("WHOELSE_SMTP_USER")
+    if not host or not sender:
         return "inbox"
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = os.environ.get("WHOELSE_SMTP_FROM", os.environ.get("WHOELSE_SMTP_USER", to))
+    msg["From"] = sender
     msg["To"] = to
     msg.set_content(body)
     port = int(os.environ.get("WHOELSE_SMTP_PORT", "587"))
-    with smtplib.SMTP(host, port, timeout=30) as s:
-        s.starttls()
+    tls = os.environ.get("WHOELSE_SMTP_TLS", "starttls").lower()
+    if tls == "ssl" or port == 465:
+        server: smtplib.SMTP = smtplib.SMTP_SSL(host, port, timeout=30)
+    else:
+        server = smtplib.SMTP(host, port, timeout=30)
+    with server as s:
+        if tls == "starttls" and port != 465:
+            s.starttls()
         user, pw = os.environ.get("WHOELSE_SMTP_USER"), os.environ.get("WHOELSE_SMTP_PASS")
         if user and pw:
             s.login(user, pw)
@@ -71,104 +97,174 @@ def notify(subject: str, body: str, to: str) -> str:
     return "email"
 
 
-async def _person_from_request(req: dict) -> Person:
+async def _person_from_request(req: Request) -> Person:
     """The other side as a full person: their published work, not just their request."""
-    ids = dict(req.get("ids") or {})
+    ids = {k: v for k, v in req.ids.model_dump().items() if v}
     try:
-        prof = await build_profile(req["name"], orcid_id=ids.get("orcid"), github_login=ids.get("github"), huggingface_user=ids.get("huggingface"))
+        prof = await build_profile(req.name, orcid_id=ids.get("orcid"), github_login=ids.get("github"), huggingface_user=ids.get("huggingface"))
         p = Person(name=prof.name, ids={**prof.ids, **ids}, affiliation=prof.affiliation, assets=prof.assets,
                    keywords=prof.keywords, topics=prof.topics, contact=prof.contact)
     except Exception:  # noqa: BLE001 - the request alone is still enough to start
-        p = Person(name=req["name"], ids=ids, keywords={k: 1.0 for k in req.get("keywords", [])})
-    p.contact.email = req.get("contact") or p.contact.email
-    if p.contact.email:
-        p.contact.provenance["email"] = "their own whoelse request"
-    if req.get("site"):
-        p.contact.website = req["site"]
+        p = Person(name=req.name, ids=ids, keywords={k: 1.0 for k in req.keywords})
+    p.contact.email = req.contact
+    p.contact.provenance["email"] = "their own whoelse request"
+    if req.site:
+        p.contact.website = req.site
     return p
 
 
-async def one_pass(*, me_name: str | None = None, dry_run: bool = False) -> list[dict]:
-    """Check the registry for every local profile that has a published request. Start work on new
-    mutual matches. Returns what happened."""
-    home = settings().home
-    net_dir = home / "network"
-    if not net_dir.exists():
-        return [{"note": "no published request on this machine; run publish_request first"}]
-    requests = {p.stem: json.loads(p.read_text()) for p in net_dir.glob("*.json")}
+async def _repo_exists(full_name: str) -> str | None:
+    try:
+        data = await http.get_json(f"https://api.github.com/repos/{full_name}", headers=gh._headers(),
+                                   fixture_name=f"github_repo_{full_name.replace('/', '_')}", cache_hours=0)
+    except SourceError:
+        return None
+    return (data or {}).get("html_url") if data else None
+
+
+def _i_create(mine: Request, other: Request) -> bool:
+    return sorted([fold(mine.name), fold(other.name)])[0] == fold(mine.name)
+
+
+async def _handle_pair(mine: Request, m: dict[str, Any], state: dict[str, dict[str, Any]], *, dry_run: bool) -> dict[str, Any]:
+    o: Request = m["request"]
+    pair = "|".join(sorted([mine.name, o.name]))
+    st = state.get(pair, {})
+    result: dict[str, Any] = {"pair": pair, "shared": m["shared"]}
+    if st.get("done"):
+        return {**result, "status": "done", "repo": st.get("repo")}
+    if not m["auto_start"]:
+        return {**result, "status": "report_only", "note": "no wanted format in common; nothing started"}
+
+    ok, why = await verified(o)
+    if not ok:
+        return {**result, "status": "unverified", "note": f"not acting on this request: {why}"}
+
+    fmt = m["common_formats"][0]
+    topic = mine.wants[0].topic
+    expected = repo_name(mine.name, o.name, topic)
+
+    if not _i_create(mine, o):
+        # Waiting side. Look for the creator's repository; after WAIT_DAYS take over.
+        creator_login = o.ids.github
+        if creator_login:
+            url = await _repo_exists(f"{creator_login}/{expected}")
+            if url:
+                state[pair] = {"done": True, "role": "joined", "repo": url, "at": date.today().isoformat()}
+                if not dry_run:
+                    notify(f"whoelse: {o.name} started joint work with you",
+                           f"{o.name} created the repository for your joint {fmt.replace('_', ' ')} on {topic}:\n\n{url}\n\n"
+                           f"Open an issue titled \"in\" there to confirm you are in.", mine.contact)
+                return {**result, "status": "joined", "repo": url}
+        since = st.get("waiting_since") or date.today().isoformat()
+        state[pair] = {"waiting_since": since, "role": "wait"}
+        days = (date.today() - datetime.strptime(since, "%Y-%m-%d").date()).days
+        if days < WAIT_DAYS:
+            return {**result, "status": "waiting", "note": f"{o.name} creates the repository; checking again (day {days}/{WAIT_DAYS})"}
+        result["note"] = f"{o.name} did not create the repository in {WAIT_DAYS} days; taking over"
+
+    # Creating side.
+    cand = Candidate(person=await _person_from_request(o), score=m["score"],
+                     overlap=Overlap(shared_keywords=m["shared"], they_have=m["they_have_you_dont"]),
+                     why="mutual request in the whoelse network", reachable="email")
+    mine_prof = load_profile(mine.name)
+    if not mine_prof:
+        return {**result, "status": "error", "note": "your profile is missing; run load_profile again"}
+    files = build_workspace(mine_prof, cand, fmt, topic=topic)
+    root = write_local(files)
+    result.update({"format": fmt, "local": str(root), "role": "create"})
+    if dry_run:
+        return {**result, "status": "dry_run"}
+
+    repo_url = st.get("repo")
+    if not repo_url:
+        try:
+            created = await create_repo(files, invite=o.ids.github)
+            repo_url = created["repo"]
+            result["invited"] = created.get("invited")
+        except SourceError as e:
+            result["repo"] = f"not created: {e}"
+    if repo_url:
+        result["repo"] = repo_url
+    online = bool(repo_url)
+
+    if not st.get("told_you"):
+        body = (f"{o.name} wants the same thing you do: {topic}.\n\n"
+                + (f"The work has started: {repo_url}\n\n" if online else f"The workspace is ready locally: {root}\n\n")
+                + "Section 1 is drafted from both of your papers where they exist, the table has the published numbers, "
+                  "the plan is 14 days.\n")
+        if not online:
+            body += ("\nThe repository could not be created on GitHub (see above), so the other side has NOT been told. "
+                     "Set GITHUB_TOKEN and run whoelse-watch again, or push the folder to GitHub under the name "
+                     f"'{expected}'; the watcher will find it and notify them.\n")
+        try:
+            result["notified_you"] = notify(f"whoelse: joint work with {o.name}", body, mine.contact)
+        except Exception as e:  # noqa: BLE001
+            result["notified_you"] = f"failed: {e}"
+        state[pair] = {**st, "role": "create", "told_you": True, "repo": repo_url, "local": str(root)}
+        save_state(state)
+
+    if not online:
+        # maybe the user pushed it by hand since last time
+        me_login = None
+        try:
+            me_data = await http.get_json("https://api.github.com/user", headers=gh._headers(), fixture_name="github_me", cache_hours=0)
+            me_login = (me_data or {}).get("login")
+        except SourceError:
+            pass
+        if me_login:
+            url = await _repo_exists(f"{me_login}/{expected}")
+            if url:
+                repo_url, online = url, True
+                result["repo"] = url
+    if online and not st.get("told_them"):
+        body2 = (f"{mine.name} works on the same problem as you ({topic}) and has started a joint "
+                 f"{fmt.replace('_', ' ')} with your name on it:\n\n{repo_url}\n\n"
+                 f"Section 1 is drafted from both papers where they exist; the plan is 14 days. To join, open an issue titled \"in\". "
+                 f"To decline, ignore this; the work will be finished alone with a citation to yours.\n")
+        try:
+            result["notified_them"] = notify(f"{mine.name} started joint work with you: {fmt.replace('_', ' ')}", body2, o.contact)
+            state[pair] = {**state.get(pair, {}), "told_them": True, "repo": repo_url, "done": True, "at": date.today().isoformat()}
+        except Exception as e:  # noqa: BLE001
+            result["notified_them"] = f"failed: {e}"
+        save_state(state)
+    elif not online:
+        result["notified_them"] = "not yet: no public repository to link"
+    result["status"] = "done" if state.get(pair, {}).get("done") else "pending"
+    return result
+
+
+async def one_pass(*, me_name: str | None = None, dry_run: bool = False) -> list[dict[str, Any]]:
+    """For every locally published request: read the network, match, act. Each pair is isolated;
+    one failure never stops the others, and state is saved as it goes."""
+    local = load_local_requests()
     if me_name:
-        requests = {k: v for k, v in requests.items() if k == me_name or v.get("name") == me_name}
-    if not requests:
-        return [{"note": "no request found for that name"}]
+        local = {k: v for k, v in local.items() if k == me_name or v.get("name") == me_name}
+    if not local:
+        return [{"note": "no published request on this machine; run publish_request first"}]
     try:
         others = await list_requests()
     except SourceError as e:
         return [{"error": str(e)}]
-    seen = _load_seen()
-    events: list[dict] = []
-    for key, mine in requests.items():
-        prof = load_profile(mine["name"])
-        if not prof:
-            events.append({"name": mine["name"], "note": "profile missing; run load_profile again"})
+    state = load_state()
+    events: list[dict[str, Any]] = []
+    from .network import parse_request
+    for key, raw in local.items():
+        mine = parse_request(raw)
+        if not mine:
+            events.append({"name": raw.get("name", key), "note": "local request does not satisfy the schema; run publish_request again"})
             continue
+        if not (raw.get("_published") or {}).get("pr"):
+            events.append({"name": mine.name, "warning": "your request is saved locally but not confirmed in the registry; others cannot see you yet"})
         matches = match_requests(mine, others)
-        events.append({"name": mine["name"], "network": len(others), "matches": len(matches)})
+        events.append({"name": mine.name, "network": len(others), "matches": len(matches),
+                       "auto_start": sum(1 for x in matches if x["auto_start"])})
         for m in matches[:3]:
-            o = m["request"]
-            pair = "|".join(sorted([mine["name"], o["name"]]))
-            if pair in seen:
-                continue
-            # Both watchers see the same match. Exactly one side creates: the one whose name sorts
-            # first. The other side's watcher reports the match and waits for the invitation.
-            if sorted([fold(mine["name"]), fold(o["name"])])[0] != fold(mine["name"]):
-                events.append({"pair": pair, "role": "wait", "note": f"{o['name']} creates the repository; you will be invited"})
-                seen.add(pair)
-                continue
-            fmt = (m["common_formats"] or [w.get("format") for w in o.get("wants", [])] or ["compare_note"])[0]
-            topic = next((w.get("topic") for w in mine.get("wants", []) if w.get("topic")), None) \
-                or next((w.get("topic") for w in o.get("wants", []) if w.get("topic")), None)
-            cand = Candidate(
-                person=await _person_from_request(o), score=m["score"],
-                overlap=Overlap(shared_keywords=m["shared"], they_have=m["they_have_you_dont"]),
-                why="mutual request in the whoelse network", reachable="email" if o.get("contact") else "profile_only",
-            )
-            files = build_workspace(prof, cand, fmt, topic=topic)
-            root = write_local(files)
-            result: dict = {"pair": pair, "format": fmt, "local": str(root), "role": "create"}
-            if not dry_run:
-                try:
-                    created = await create_repo(files, invite=(o.get("ids") or {}).get("github"))
-                    result.update(created)
-                except SourceError as e:
-                    result["repo"] = f"not created: {e}"
-                online = str(result.get("repo", "")).startswith("http")
-                link = result["repo"] if online else str(root)
-                body = (
-                    f"{o['name']} wants the same thing you do: {topic or ', '.join(m['shared'][:3])}.\n\n"
-                    f"The work has started: {link}\n\n"
-                    f"Section 1 is drafted from both of your papers, the table has the published numbers, "
-                    f"the plan is 14 days. Say yes by opening an issue titled \"in\" or pushing a commit.\n"
-                )
-                if not online:
-                    body += ("\nThe repository could not be created online (see above), so the other side has NOT been told yet. "
-                             "Push this folder to GitHub (or set GITHUB_TOKEN) and run whoelse-watch again; it will then notify them.\n")
-                result["notified_you"] = notify(f"whoelse: joint work started with {o['name']}", body, mine["contact"])
-                if o.get("contact") and online:
-                    body2 = (
-                        f"{mine['name']} works on the same problem as you ({topic or ', '.join(m['shared'][:3])}) and has started a joint "
-                        f"{fmt.replace('_', ' ')} with your name on it:\n\n{link}\n\n"
-                        f"Section 1 is drafted from both papers; the plan is 14 days. To join, open an issue titled \"in\". "
-                        f"To decline, ignore this; the work will be finished alone with a citation to yours.\n"
-                    )
-                    result["notified_them"] = notify(f"{mine['name']} started joint work with you: {fmt.replace('_', ' ')}", body2, o["contact"])
-                    seen.add(pair)
-                elif online:
-                    seen.add(pair)
-                else:
-                    result["notified_them"] = "not yet: no online repository to link"
-            events.append(result)
-    if not dry_run:
-        _save_seen(seen)
+            try:
+                events.append(await _handle_pair(mine, m, state, dry_run=dry_run))
+            except Exception as e:  # noqa: BLE001
+                events.append({"pair": "|".join(sorted([mine.name, m["request"].name])), "status": "error", "error": f"{type(e).__name__}: {e}"})
+            save_state(state)
     return events
 
 
@@ -183,7 +279,10 @@ def main() -> None:
         n, unit = int(a.loop[:-1]), a.loop[-1]
         interval = n * {"m": 60, "h": 3600, "d": 86400}[unit]
     while True:
-        events = asyncio.run(one_pass(me_name=a.name, dry_run=a.dry_run))
+        try:
+            events = asyncio.run(one_pass(me_name=a.name, dry_run=a.dry_run))
+        except Exception as e:  # noqa: BLE001
+            events = [{"error": f"{type(e).__name__}: {e}"}]
         print(json.dumps(events, indent=2, ensure_ascii=False, default=str))
         if not interval:
             break

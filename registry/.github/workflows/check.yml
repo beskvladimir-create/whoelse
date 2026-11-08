@@ -1,0 +1,38 @@
+name: check request
+on:
+  pull_request:
+    paths: ["people/**"]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install git+https://github.com/beskvladimir-create/whoelse
+      - name: one file, yours, valid
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess, sys
+          from whoelse.network import parse_request
+          from whoelse.profile import slug
+          changed = subprocess.check_output(["git", "diff", "--name-only", os.environ["BASE"], "HEAD"], text=True).split()
+          files = [f for f in changed if f.startswith("people/")]
+          if len(files) != 1:
+              sys.exit(f"exactly one file under people/ per pull request, got {files}")
+          path = files[0]
+          if not os.path.exists(path):
+              sys.exit("deleting your file is fine, but do it in a separate PR titled 'remove'")  # keep simple
+          req = parse_request(json.load(open(path)))
+          if not req:
+              sys.exit("file does not satisfy the whoelse request schema")
+          if path != f"people/{slug(req.name)}.json":
+              sys.exit(f"file must be people/{slug(req.name)}.json")
+          if (req.ids.github or "").lower() != os.environ["PR_AUTHOR"].lower():
+              sys.exit(f"ids.github must be the pull request author ({os.environ['PR_AUTHOR']})")
+          print("ok:", req.name, req.wants[0].topic)
+          PY

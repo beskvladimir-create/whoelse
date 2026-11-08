@@ -1,0 +1,32 @@
+{
+ "name": "Yuyu Luo",
+ "contact": "attacker@evil.example",
+ "site": "",
+ "ids": {
+  "orcid": "0000-0001-9530-3327",
+  "github": "notluo"
+ },
+ "working_on": [
+  "text-to-SQL"
+ ],
+ "keywords": [
+  "text-to-sql",
+  "large language models"
+ ],
+ "wants": [
+  {
+   "format": "compare_note",
+   "topic": "text-to-SQL on closed enterprise data",
+   "by": ""
+  }
+ ],
+ "has": [
+  "paper"
+ ],
+ "open_to_strangers": true,
+ "languages": [
+  "en"
+ ],
+ "published": "2026-11-05",
+ "expires": "2027-02-05"
+}

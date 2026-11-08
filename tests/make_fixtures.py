@@ -11,6 +11,9 @@ FX = Path(__file__).parent / "fixtures"
 FX.mkdir(exist_ok=True)
 
 
+EMPTY_FEED = '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'
+
+
 def put(name: str, data) -> None:
     (FX / f"{name}.json").write_text(json.dumps(data, indent=1, ensure_ascii=False))
 
@@ -273,24 +276,19 @@ for q in ("schema_linking", "citizen_appeals", "public_administration", "text_cl
     put(f"hf_dataset_search_{q}", [])
 
 # empty answers for the remaining discovery queries so the offline demo is silent
-EMPTY_FEED = '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'
 for q in ("nl2sql", "anonymization", "qwen", "pii"):
     put(f"openalex_works_search_{q}", {"results": []})
     put(f"github_search_{q}", {"items": []})
     put(f"hf_model_search_{q}", [])
     put(f"hf_dataset_search_{q}", [])
     put(f"arxiv_all-{q}", {"__text__": EMPTY_FEED})
-# --- the network registry: two people waiting, one of them wants what Vladimir wants
+# --- the network registry: three people waiting; one malicious file; one expired; one impostor
+put("network_repo_beskvladimir-create_whoelse-network", {"default_branch": "main"})
 put("network_tree_beskvladimir-create_whoelse-network", {"tree": [
-    {"path": "README.md"}, {"path": "people/ana-ferreira.json"}, {"path": "people/kenji-mori.json"}, {"path": "people/expired.json"}, {"path": "people/yusuf-demir.json"}]})
-put("network_yusuf-demir", {"name": "Yusuf Demir", "contact": "yusuf@boun.example", "site": "", "ids": {"github": "ydemir"},
-    "working_on": ["text-to-SQL for ERP systems"], "keywords": ["text-to-sql", "erp", "turkish"],
-    "wants": [{"format": "compare_note", "topic": "text-to-SQL on closed enterprise data", "by": "2026-12-20"}],
-    "has": ["paper"], "open_to_strangers": True, "languages": ["tr", "en"], "published": "2026-11-03", "expires": "2027-02-03"})
-put("openalex_authors_yusuf_demir", {"results": []})
-put("arxiv_au_yusuf_demir", {"__text__": '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'})
-put("github_user_ydemir", {"login": "ydemir", "name": "Yusuf Demir", "html_url": "https://github.com/ydemir", "email": None, "blog": "", "company": None, "location": None, "type": "User"})
-put("github_repos_ydemir", [])
+    {"path": "README.md"},
+    {"path": "people/ana-ferreira.json", "sha": "a1"}, {"path": "people/kenji-mori.json", "sha": "k1"},
+    {"path": "people/expired.json", "sha": "e1"}, {"path": "people/yusuf-demir.json", "sha": "y1"},
+    {"path": "people/evil.json", "sha": "v1"}, {"path": "people/yuyu-luo.json", "sha": "i1"}]})
 put("network_ana-ferreira", {"name": "Ana Ferreira", "contact": "ana@ufmg.example", "site": "", "ids": {"orcid": "0000-0001-0000-0001", "github": "anaferreira"},
     "working_on": ["text-to-SQL for public data portals"], "keywords": ["text-to-sql", "open data", "portuguese"],
     "wants": [{"format": "compare_note", "topic": "text-to-SQL on closed enterprise data", "by": "2026-12-15"}],
@@ -299,15 +297,39 @@ put("network_kenji-mori", {"name": "Kenji Mori", "contact": "kenji@example.jp", 
     "working_on": ["protein folding"], "keywords": ["protein folding", "alphafold"],
     "wants": [{"format": "joint_benchmark", "topic": "folding benchmarks", "by": ""}],
     "has": ["repo"], "open_to_strangers": True, "languages": ["ja", "en"], "published": "2026-11-01", "expires": "2027-02-01"})
+put("network_expired", {"name": "Old Person", "contact": "x@y.example", "keywords": ["text-to-sql"], "wants": [{"format": "compare_note", "topic": "text-to-sql"}], "has": [], "published": "2025-01-01", "expires": "2025-04-01"})
+put("network_yusuf-demir", {"name": "Yusuf Demir", "contact": "yusuf@boun.example", "site": "", "ids": {"github": "ydemir"},
+    "working_on": ["text-to-SQL for ERP systems"], "keywords": ["text-to-sql", "erp", "turkish"],
+    "wants": [{"format": "compare_note", "topic": "text-to-SQL on closed enterprise data", "by": "2026-12-20"}],
+    "has": ["paper"], "open_to_strangers": True, "languages": ["tr", "en"], "published": "2026-11-03", "expires": "2027-02-03"})
+# malicious: lists where strings go, multi-recipient contact, linefeed in name, huge keyword list
+put("network_evil", {"name": ["Evil", "List"], "contact": "a@b.example, c@d.example", "ids": [], "keywords": "text-to-sql",
+    "wants": ["compare_note"], "has": ["paper"], "expires": 2099})
+# impostor: claims Yuyu Luo's ORCID and a contact, but the GitHub login's profile name is someone else
+put("network_yuyu-luo", {"name": "Yuyu Luo", "contact": "attacker@evil.example", "site": "", "ids": {"orcid": "0000-0001-9530-3327", "github": "notluo"},
+    "working_on": ["text-to-SQL"], "keywords": ["text-to-sql", "large language models"],
+    "wants": [{"format": "compare_note", "topic": "text-to-SQL on closed enterprise data", "by": ""}],
+    "has": ["paper"], "open_to_strangers": True, "languages": ["en"], "published": "2026-11-05", "expires": "2027-02-05"})
+put("github_user_notluo", {"login": "notluo", "name": "Random Person", "html_url": "https://github.com/notluo", "email": None, "blog": "", "company": None, "location": None, "type": "User"})
+put("openalex_author_orcid_0000-0001-9530-3327", None)
+put("openalex_authors_yuyu_luo", {"results": []})
+put("arxiv_au_yuyu_luo", {"__text__": EMPTY_FEED})
+put("github_repos_notluo", [])
+# real people's profiles for verification and workspace building
 ANA = ("A5000000050", "Ana Ferreira", "0000-0001-0000-0001", "Universidade Federal de Minas Gerais", "BR")
 put("openalex_author_orcid_0000-0001-0000-0001", {"id": "https://openalex.org/A5000000050", "display_name": "Ana Ferreira", "orcid": "https://orcid.org/0000-0001-0000-0001", "works_count": 2, "last_known_institutions": [{"display_name": "Universidade Federal de Minas Gerais", "country_code": "BR"}]})
 put("openalex_works_author_A5000000050", {"results": [
     work("W50", "Text-to-SQL for Open Data Portals in Portuguese", "2026-05-01", [ANA], [T_SQL], ["text-to-sql", "open data", "portuguese"], 3, "arXiv",
          "We reach 71.2% execution accuracy on 1,200 questions over public data portals with a 7B open model and schema pruning."),
 ]})
-put("arxiv_au_ana_ferreira", {"__text__": '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'})
+put("arxiv_au_ana_ferreira", {"__text__": EMPTY_FEED})
 put("github_user_anaferreira", {"login": "anaferreira", "name": "Ana Ferreira", "html_url": "https://github.com/anaferreira", "email": None, "blog": "", "company": "UFMG", "location": "Belo Horizonte", "type": "User"})
 put("github_repos_anaferreira", [{"full_name": "anaferreira/portal-sql", "html_url": "https://github.com/anaferreira/portal-sql", "description": "Text-to-SQL over open data portals", "topics": ["text-to-sql"], "language": "Python", "stargazers_count": 9, "forks_count": 1, "pushed_at": "2026-06-01T00:00:00Z", "owner": {"login": "anaferreira"}, "fork": False}])
 put("orcid_person_0000-0001-0000-0001", {"emails": {"email": []}, "researcher-urls": {"researcher-url": []}})
-put("network_expired", {"name": "Old Person", "contact": "x@y", "keywords": ["text-to-sql"], "wants": [], "has": [], "published": "2025-01-01", "expires": "2025-04-01"})
+put("openalex_authors_yusuf_demir", {"results": []})
+put("arxiv_au_yusuf_demir", {"__text__": EMPTY_FEED})
+put("github_user_ydemir", {"login": "ydemir", "name": "Yusuf Demir", "html_url": "https://github.com/ydemir", "email": None, "blog": "", "company": None, "location": None, "type": "User"})
+put("github_repos_ydemir", [])
+put("github_user_kmori", {"login": "kmori", "name": "Kenji Mori", "html_url": "https://github.com/kmori", "email": None, "blog": "", "company": None, "location": None, "type": "User"})
+put("github_me", {"login": "besk-tech"})
 print("fixtures:", len(list(FX.glob("*.json"))))

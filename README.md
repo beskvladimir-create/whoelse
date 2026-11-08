@@ -32,8 +32,11 @@ finish alone and cite them.
 
 **2. Mutual matching without any letters.** `publish_request` puts what you want to build into an
 open registry (one JSON file per person, in a public GitHub repository; no account with us, no
-server). Anyone who installs whoelse with the same problem is matched to you. When both sides want
-the same thing, the watcher starts the work by itself and sends both of you the link.
+server). It publishes your name and email, so your agent shows you the file and asks before it
+goes. Anyone who installs whoelse with the same problem is matched to you. When both sides want the
+same format on the same problem, one watcher (the side whose name sorts first) creates the
+repository, invites the other, and emails both; the other watcher sees the repository appear and
+confirms, or takes over after three days of silence.
 
 **3. Nobody falls out of the queue.** If there is no match today, whoelse says so plainly:
 
@@ -45,8 +48,15 @@ the same thing, the watcher starts the work by itself and sends both of you the 
 notification when the repository is created and you are invited).
 
 **4. Strangers, by design.** People you already publish with are listed separately and never
-proposed. Priority goes to a different institution, a different country, and a different kind of
-asset: your code against their data, their paper against your system.
+proposed. Requests that share an id with yours are skipped. Complementary assets score higher:
+your code against their data, their paper against your system.
+
+**5. Nobody is named, invited or emailed on the strength of a file.** A registry file is data
+written by a stranger. It must fit a strict schema; the registry's CI merges it only if `ids.github`
+is the login that opened the pull request; and the watcher acts on it only after checking that
+that GitHub profile's display name is the name in the file (and that an ORCID, if given, does not
+contradict the contact). An impostor file is dropped, not acted on. A repository that already
+exists is never overwritten.
 
 ## What you get
 
@@ -110,13 +120,16 @@ arXiv submitter emails are never touched. arXiv's terms forbid using them for un
 ## The network
 
 A public GitHub repository, `beskvladimir-create/whoelse-network`, with one JSON file per person
-under `people/`. Your agent opens the pull request (with your `GITHUB_TOKEN`), or writes the file
-and tells you where to put it. Requests expire after three months unless renewed. Reading needs no
-account. There is no server and nothing to sign up for; the repository is the directory.
+under `people/`. Your agent opens the pull request (with a `GITHUB_TOKEN` that has `public_repo`
+scope), or writes the file and tells you where to put it. Calling `publish_request` again renews
+or updates your file on the same branch. Requests expire after three months. Reading needs no
+account. There is no server and nothing to sign up for; the repository is the directory. The
+registry's own CI and README are in `registry/` in this repository.
 
-`whoelse-watch` reads it, matches your request against everyone else's, and when two people want
-the same thing it builds the workspace, creates the repository, invites the other side, and emails
-both. Run it from cron or launchd:
+`whoelse-watch` reads it fresh every pass (the registry is never served from cache), matches your
+request against everyone else's, and when two people want the same format on the same problem it
+builds the workspace, creates the repository, invites the other side, and emails both; once per
+pair, with state saved after every step. Run it from cron or launchd:
 
 ```
 0 */6 * * *  whoelse-watch
@@ -177,15 +190,20 @@ Optional environment:
 |---|---|
 | `WHOELSE_OPENALEX_KEY` | free key from openalex.org/settings/api; without it you share a small per-IP daily budget |
 | `WHOELSE_MAILTO` | your email for OpenAlex's polite pool; sent nowhere else |
-| `GITHUB_TOKEN` | raises GitHub search limits; read-only scope is enough |
+| `GITHUB_TOKEN` | raises GitHub search limits (any scope); `public_repo` scope is needed for `publish_request`, `start_joint_work` and the watcher |
+| `WHOELSE_SMTP_HOST`, `_PORT`, `_USER`, `_PASS`, `_FROM` | the watcher's email, sent from your own address; without them, notifications land in `~/.whoelse/inbox/` |
 | `WHOELSE_HOME` | where profiles, peers and cache live (default `~/.whoelse`) |
 
 ## What it will not do
 
-- Send anything. Every message leaves from your own address, one person at a time, by your hand.
-- Use a contact the person did not publish.
+- Send a letter for you. Drafts are yours to send, from your own address, one person at a time.
+  The only automatic messages are the watcher's: to you, and to a verified stranger, once, with a
+  public repository link, after you joined the network and confirmed what gets published.
+- Use a contact the person did not publish themselves (their ORCID, their GitHub, their own card,
+  their own registry file).
 - Star, follow, like or post on your behalf.
-- Keep anything anywhere but your machine.
+- Keep anything about you anywhere but your machine, except the registry file you confirmed and
+  the joint repositories you asked for.
 
 ## First run on your own name
 
