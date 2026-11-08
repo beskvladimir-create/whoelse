@@ -1,0 +1,53 @@
+{
+ "total_count": 2193,
+ "items": [
+  {
+   "full_name": "InkSha/rust-tutorial",
+   "html_url": "https://github.com/InkSha/rust-tutorial",
+   "description": "Rust tutorial with a todo app example",
+   "topics": [],
+   "language": "Rust",
+   "stargazers_count": 900,
+   "forks_count": 0,
+   "pushed_at": "2026-10-01T00:00:00Z",
+   "owner": {
+    "login": "InkSha"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "someone/rust-todo",
+   "html_url": "https://github.com/someone/rust-todo",
+   "description": "A todo app in Rust",
+   "topics": [],
+   "language": "Rust",
+   "stargazers_count": 12,
+   "forks_count": 0,
+   "pushed_at": "2026-10-01T00:00:00Z",
+   "owner": {
+    "login": "someone"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "other/todo-cli-rust",
+   "html_url": "https://github.com/other/todo-cli-rust",
+   "description": "todo cli written in rust",
+   "topics": [],
+   "language": "Rust",
+   "stargazers_count": 5,
+   "forks_count": 0,
+   "pushed_at": "2026-09-01T00:00:00Z",
+   "owner": {
+    "login": "other"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  }
+ ]
+}

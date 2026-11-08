@@ -5,6 +5,7 @@ Run: python tests/make_fixtures.py"""
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 FX = Path(__file__).parent / "fixtures"
@@ -348,22 +349,27 @@ CLUSTER = [
     repo("chrisdoc/hevy-mcp", "Manage your Hevy workouts and sessions, stay synced", "TypeScript", 533, "2026-11-07T00:00:00Z", ["fitness"]),  # noise
 ]
 put("github_search_sync_claude_code_sessions_machines", {"total_count": 233, "items": CLUSTER})
-put("github_search_claude_code_sync_sessions", {"total_count": 233, "items": CLUSTER})
-for q in ("sync_claude_code_sessions_wearable", "claude_code_wearable", "sync_claude_code_session_wearable"):
-    put(f"github_search_{q}", {"total_count": 9, "items": CLUSTER})
+import sys
+sys.path.insert(0, str(FX.parent.parent / "src"))
+from whoelse.duplicates import _queries_for  # noqa: E402
+def _qname(q):
+    return re.sub(r"[^\w.-]", "_", "github_search_" + q.lower().replace(" ", "_")[:60])[:150]
+for q in _queries_for("sync Claude Code sessions across machines") + _queries_for("sync Claude Code sessions to a wearable"):
+    put(_qname(q), {"total_count": 233, "items": CLUSTER})
 # a broad field: the search has far more than the cap; the leader is a tutorial, not a todo app
-put("github_search_todo_rust", {"total_count": 2193, "items": [
-    repo("InkSha/rust-tutorial", "Rust tutorial with a todo app example", "Rust", 900, "2026-10-01T00:00:00Z"),
-    repo("someone/rust-todo", "A todo app in Rust", "Rust", 12, "2026-10-01T00:00:00Z"),
-    repo("other/todo-cli-rust", "todo cli written in rust", "Rust", 5, "2026-09-01T00:00:00Z"),
-]})
 # a Claude Code ecosystem noise set: product mentioned, job absent
 NOISE = [
     repo("thedotmack/claude-mem", "Memory plugin for Claude Code", "TypeScript", 114578, "2026-11-01T00:00:00Z"),
     repo("x/claude-hud", "A HUD for Claude Code", "TypeScript", 3000, "2026-11-01T00:00:00Z"),
     repo("y/cc-backup", "Back up Claude Code sessions to a folder, with restore", "Shell", 4, "2026-10-01T00:00:00Z"),
 ]
-for q in ("claude_code_plugin_backup_sessions", "claude_code_plugin", "claude_code_backup", "plugin_backup", "claude_code_sessions"):
-    put(f"github_search_{q}", {"total_count": 47844 if q == "claude_code_plugin" else 120, "items": NOISE})
+for q in _queries_for("a Claude Code plugin to back up sessions"):
+    put(_qname(q), {"total_count": 47844 if q == "claude code plugin" else 120, "items": NOISE})
+for q in _queries_for("todo app in rust"):
+    put(_qname(q), {"total_count": 2193, "items": [
+        repo("InkSha/rust-tutorial", "Rust tutorial with a todo app example", "Rust", 900, "2026-10-01T00:00:00Z"),
+        repo("someone/rust-todo", "A todo app in Rust", "Rust", 12, "2026-10-01T00:00:00Z"),
+        repo("other/todo-cli-rust", "todo cli written in rust", "Rust", 5, "2026-09-01T00:00:00Z"),
+    ]})
 
 print("fixtures:", len(list(FX.glob("*.json"))))

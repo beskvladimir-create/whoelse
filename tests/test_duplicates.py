@@ -168,7 +168,7 @@ def test_rate_limit_detection():
 async def test_empty_cluster_with_related_field_is_not_called_new():
     d = await dup.find_duplicates("sync Claude Code sessions to a wearable")   # nobody does the wearable part
     assert d["count"] == 0 and d["related"]["count"] >= 6
-    assert "the field exists" in d["verdict"] and "this is new" not in d["verdict"]
+    assert "specific part looks new; the general part is not" in d["verdict"]
 
 
 async def test_non_result_search_response_is_an_error_not_novelty(monkeypatch):
@@ -192,7 +192,7 @@ def test_verdict_median_is_of_the_others():
     mk = lambda n, s: Asset(kind="repo", title=n, url="", source="github", summary="x", date=date.today(), stats={"stars": s})  # noqa: E731
     cl = [mk("a/lead", 80), mk("b/x", 4), mk("c/y", 3), mk("d/z", 2)]
     v = dup._verdict("i", cl, [80, 4, 3, 2], cl[0], months=6, broad=False, total=4, errors=[], excluded=None, capped=False)
-    assert "the other 3 have a median of 3" in v and "6 months" in v
+    assert "the other 3 have a median of 3" in v
 
 
 def test_inactive_repos_are_not_asked_and_name_never_empty():

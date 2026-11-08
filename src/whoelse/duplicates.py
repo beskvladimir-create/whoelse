@@ -70,6 +70,7 @@ _COMMON = {"sync", "machines", "machine", "sessions", "session", "code", "files"
 _PRODUCTS = {"claude", "claude-code", "codex", "cursor", "gemini", "copilot", "opencode", "openclaw", "hermes", "aider", "windsurf",
              "antigravity", "obsidian", "notion", "slack", "telegram", "discord", "github", "gitlab", "vscode", "neovim", "tmux",
              "docker", "kubernetes", "chatgpt", "openai", "anthropic", "ollama", "langchain"}
+_LANGS_Q = {"rust", "python", "go", "golang", "typescript", "javascript", "java", "kotlin", "swift", "ruby", "php", "c#", "csharp", "c++", "cpp", "elixir", "zig", "dart", "scala", "haskell"}
 _TECH = {"mcp", "cli", "api", "sdk", "tui", "gui", "llm", "rag", "ocr", "pii", "sql", "nlp"}   # short but sharp
 # the form a tool takes is not the job it does: "a plugin to back up sessions" is about backing up sessions
 _FORM = {"plugin", "cli", "app", "tool", "extension", "script", "library", "package", "wrapper", "utility", "bot", "program"}
@@ -87,7 +88,7 @@ _SYNONYMS = {"anonymization": ["anonymisation", "pseudonymization", "de-identifi
              "backup": ["snapshot", "export"], "nl2sql": ["text-to-sql", "text2sql"], "text-to-sql": ["nl2sql", "text2sql"],
              "cli": ["command-line", "terminal"], "sync": ["synchronize", "synchronise", "sharing"],
              "duplicates": ["duplicate", "dedupe", "dedup"], "mcp": ["model context protocol"],
-             "machines": ["devices", "computers", "machine", "device", "hosts"], "sessions": ["session", "conversations", "transcripts"],
+             "machines": ["devices", "computers", "hosts"], "sessions": ["conversations", "transcripts"],
              "plugin": ["extension", "addon"], "search": ["find", "query", "lookup"]}
 
 
@@ -98,15 +99,51 @@ def _normalise(text: str) -> str:
     return t
 
 
-def _tokens(text: str) -> list[str]:
-    toks = (t.strip(".-+") for t in re.findall(r"[a-z0-9][a-z0-9+.-]{1,}", _normalise(text)))
-    return [t for t in toks if t not in _STOP and len(t) > 1]
+_KEEP_S = {"sessions", "machines", "devices", "files", "costs", "tokens", "notebooks", "posts", "vaults", "images", "videos",
+           "papers", "documents", "providers", "models", "repos", "repositories", "plugins", "hooks", "tests", "settings"}
+
+
+def _stem(t: str) -> str:
+    """Light, symmetric stemming so "costs"/"cost", "tracking"/"track", "summarizes"/"summarize" meet.
+    Applied to the idea and to repository text alike, so it only has to be consistent, not correct."""
+    if len(t) <= 4 or not t.isalpha():
+        return t
+    if t.endswith("ies") and len(t) > 5:
+        return t[:-3] + "y"
+    if t.endswith("ing") and len(t) > 6:
+        t = t[:-3]
+        return t[:-1] if len(t) > 3 and t[-1] == t[-2] and t[-1] not in "aeiou" else t
+    if t.endswith("es") and t[:-2].endswith(("sh", "ch", "x", "z", "ss")):
+        return t[:-2]
+    if t.endswith("s") and not t.endswith("ss"):
+        return t[:-1]
+    return t
+
+
+def _tokens(text: str, *, stem: bool = True) -> list[str]:
+    """Stemmed tokens for matching; unstemmed (stem=False) for search queries, which GitHub matches literally."""
+    raw = [t.strip(".-+") for t in re.findall(r"[a-z0-9][a-z0-9+.-]{1,}", _normalise(text))]
+    toks: list[str] = []
+    for t in raw:
+        toks.append(t)
+        if "-" in t and t not in _PRODUCTS:
+            toks.extend(p for p in t.split("-") if len(p) > 1)   # "static-site" also counts as static, site
+    return [(_stem(t) if stem else t) for t in toks if t not in _STOP and len(t) > 1]
 
 
 def _job_tokens(toks: list[str]) -> list[str]:
     """What the tool does, without the product it does it for. "code" after "claude" is part of the
     product name and is already folded into claude-code by _normalise."""
     return [t for t in dict.fromkeys(toks) if t not in _PRODUCTS and t not in _FORM]
+
+
+_GENERIC_WORDS = {"parsing", "parse", "parser", "tracking", "track", "tracker", "convert", "converts", "converting", "converter",
+                  "summarize", "summarizes", "summarizing", "summarizer", "summary", "block", "blocks", "blocking", "blocker",
+                  "find", "finds", "finding", "finder", "generate", "generates", "generator", "generation", "manage", "manages", "manager",
+                  "check", "checks", "checker", "monitor", "monitoring", "scan", "scanner", "build", "builder", "create", "creates",
+                  "write", "writes", "read", "reads", "run", "runs", "runner", "export", "exports", "import", "imports",
+                  "static", "site", "sites", "dashboard", "bot", "extension", "library", "framework", "service", "problem", "people",
+                  "working", "research", "same", "across", "between", "before", "after", "sending", "send", "document", "documents"}
 
 
 def _rarity(t: str) -> tuple[int, int]:
@@ -116,16 +153,29 @@ def _rarity(t: str) -> tuple[int, int]:
         special = 0
     elif "-" in t or t in _TECH:
         special = 1
+    elif t in _COMMON or t in _GENERIC_WORDS:
+        special = 3
     else:
-        special = 2 if t not in _COMMON else 3
+        special = 2
     return (special, -len(t))
+
+
+_SYN_STEMMED: dict[str, list[set[str]]] = {}
+
+
+def _syns(t: str) -> list[set[str]]:
+    """Synonym token sets for a stemmed token (the table is written in plain English; stems are derived once)."""
+    if not _SYN_STEMMED:
+        for k, vs in _SYNONYMS.items():
+            _SYN_STEMMED.setdefault(_stem(k), []).extend(set(_tokens(v)) for v in vs)
+    return _SYN_STEMMED.get(t, [])
 
 
 def _expand(bag: set[str]) -> set[str]:
     out = set(bag)
     for t in bag:
-        for syn in _SYNONYMS.get(t, []):
-            out.update(_tokens(syn))
+        for syn in _syns(t):
+            out.update(syn)
     return out
 
 
@@ -147,18 +197,21 @@ def _queries_for(idea: str) -> list[str]:
     """GitHub search queries from a one-line idea: the whole sentence (GitHub ANDs the words); the
     product name with the two rarest job words; the rarest job words alone; the sentence again with
     a synonym for its rarest word. Never a two-word query whose second word is weak or short."""
-    toks = _tokens(idea)
+    toks = _tokens(idea, stem=False)
     products = [t for t in toks if t in _PRODUCTS]
-    job = _job_tokens(toks)
-    core = sorted(job, key=_rarity)[:2]
+    langs = [t for t in toks if t in _LANGS_Q]
+    job = [t for t in _job_tokens(toks) if t not in _LANGS_Q]
+    core = sorted(job, key=_rarity)[:3]
     plain = lambda t: t.replace("-", " ") if t in _PRODUCTS else t  # noqa: E731
     qs = [" ".join(plain(t) for t in toks[:6])]
     prod = plain(products[0]) if products else ""
     if prod:
-        qs += [f"{prod} {c}" for c in core if len(c) >= 4 and c not in _WEAK and c not in _COMMON]
-    sharp = [c for c in core if c not in _COMMON]
+        qs += [f"{prod} {c}" for c in core[:2] if len(c) >= 4 and c not in _WEAK and c not in _COMMON]
+    sharp = [c for c in core if c not in _COMMON and c not in _GENERIC_WORDS]
     if len(sharp) >= 2:
         qs.append(" ".join(sharp))
+    elif len(sharp) == 1 and not prod and len(job) >= 2:
+        qs.append(" ".join([sharp[0]] + [t for t in job if t != sharp[0]][:1]))
     if prod:
         # the verb or noun that names the job, with the product: "claude code sync sessions"
         verbs = [t for t in job if t in _COMMON and t not in ("across", "multiple", "machines", "machine", "devices", "device", "same", "thing", "things")][:2]
@@ -169,12 +222,17 @@ def _queries_for(idea: str) -> list[str]:
     for c in core:
         for syn in _SYNONYMS.get(c, [])[:1]:
             qs.append(" ".join(syn if t == c else plain(t) for t in toks[:6]))
+    if langs and core:
+        # "a Rust library for DICOM": the language is a qualifier, the rarest word is the query
+        qs.append(f"{core[0]} language:{'csharp' if langs[0] == 'c#' else 'cpp' if langs[0] == 'c++' else langs[0]}")
+    if prod and core:
+        qs.append(f"{prod} {core[0]}")
     seen, out = set(), []
     for q in qs:
         if q and q not in seen:
             seen.add(q)
             out.append(q)
-    return out[:5]
+    return out[:6]
 
 
 def _bag(repo: Asset) -> set[str]:
@@ -194,7 +252,7 @@ def _similarity_hits(job: set[str], repo: Asset) -> tuple[float, set[str]]:
     bag = _expand(raw)
     if not bag or not job:
         return 0.0, set()
-    hit = {t for t in job if t in bag or any(set(_tokens(s)) & bag for s in _SYNONYMS.get(t, []))}
+    hit = {t for t in job if t in bag or any(syn & bag for syn in _syns(t))}
     return len(hit) / math.sqrt(len(job) * len(raw)), hit
 
 
@@ -220,43 +278,49 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
     idea = clean_idea(idea)
     toks = _tokens(idea)
     job = set(_job_tokens(toks))
+    products = {t for t in toks if t in _PRODUCTS}
     if not toks:
         raise ValueError("describe the job the tool does, in English words (GitHub search is English)")
     if not job:
         raise ValueError("the idea names a product but not a job; say what the tool does")
     # job words that must appear in a repository's text: all of them for a short idea, half for a long one
     need = len(job) if len(job) <= 3 else max(2, math.ceil(len(job) / 2))
-    since = date.today() - timedelta(days=30 * months)
+    stale = (date.today() - timedelta(days=30 * months)).isoformat()
     found: dict[str, Asset] = {}
     errors: list[str] = []
     totals: list[int] = []
     for q in _queries_for(idea):
         try:
-            assets, total = await gh.search_repos_meta(q, since=since, limit=50)
+            assets, total = await gh.search_repos_meta(q, limit=50)
             totals.append(total)
             for r in assets:
                 found.setdefault(r.title, r)
         except SourceError as e:
             errors.append(f"github '{q}': {e}")
     repos = list(found.values())
-    search_total = max(totals) if totals else 0
+    search_total = totals[0] if totals else 0          # the whole sentence: the most specific query
+    field_total = max(totals) if totals else 0         # the widest query: the size of the field
     broad = search_total > BROAD_SEARCH
     scored, excluded, related = [], [], []
     for r in repos:
         sim, bag_hit = _similarity_hits(job, r)
         matched = len(bag_hit)
+        if products and not (products & _expand(_bag(r))):
+            continue   # the idea is about a product; a repository that never mentions it is about something else
         if matched >= 2 or (matched == 1 and any(t in bag_hit for t in job if t not in _COMMON)):
-            related.append(r)
+            sharp_hit = any(t not in _COMMON and t not in _TECH and t not in _GENERIC_WORDS for t in bag_hit)
+            related.append((matched + (1 if sharp_hit else 0), r, sharp_hit))
         if sim < SIM_THRESHOLD or matched < need:
             continue
         if max_stars is not None and r.stats.get("stars", 0) > max_stars:
             excluded.append(r)
             continue
         scored.append((sim, r))
-    # relevance decides membership; stars decide order, because the reader wants the leader first
-    scored.sort(key=lambda x: -x[0])
+    # relevance (the threshold) decides membership; stars decide order and what survives the cap,
+    # because the reader wants the leader first and a 3,000-star duplicate must never fall off the list
+    scored.sort(key=lambda x: (-x[1].stats.get("stars", 0), -x[0]))
     capped = len(scored) > limit
-    cluster = sorted((r for _, r in scored[:limit]), key=lambda r: -r.stats.get("stars", 0))
+    cluster = [r for _, r in scored[:limit]]
 
     matrix = {r.title: sorted(_features(r)) for r in cluster}
     all_features = Counter(f for fs in matrix.values() for f in fs)
@@ -264,21 +328,29 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
     leader = max(cluster, key=lambda r: r.stats.get("stars", 0)) if cluster else None
     # "nobody has": features seen in at least two related repositories (ones that share a job word
     # with the idea) but in no cluster member. From one-line descriptions, so a hint, not a census.
-    wider = Counter(f for r in related for f in _features(r))
+    wider = Counter(f for _, r, _ in related for f in _features(r))
     nobody_has = sorted((f for f, n in wider.items() if n >= 2 and f not in all_features and not f.startswith("license")),
                         key=lambda f: -wider[f]) if cluster else []
     unique = {r.title: [f for f in matrix[r.title] if all_features[f] == 1 and not f.startswith("license")] for r in cluster}
     strongest_excluded = max(excluded, key=lambda r: r.stats.get("stars", 0)) if excluded else None
 
-    top_related = max(related, key=lambda r: r.stats.get("stars", 0)) if related else None
-    verdict = _verdict(idea, cluster, stars, leader, months=months, broad=broad, total=search_total,
-                       errors=errors, excluded=strongest_excluded, capped=capped, related=len(related), top_related=top_related)
+    strong = [x for x in related if x[2]] or related
+    top_related = max(strong, key=lambda mr: (mr[0], mr[1].stats.get("stars", 0)))[1] if related else None
+    related_is_vague = bool(related) and not any(x[2] for x in related)
+    stale_n = sum(1 for r in cluster if not r.date or r.date.isoformat() < stale)
+    verdict = _verdict(idea, cluster, stars, leader, months=months, broad=broad, total=field_total, sentence_total=search_total,
+                       errors=errors, excluded=strongest_excluded, capped=capped, related=len(related),
+                       top_related=None if related_is_vague else top_related)
     return {
         "idea": idea,
         "count": len(cluster),
         "count_note": ("at least; the search returns the most-starred 50 per query" if capped or broad else None),
         "search_total": search_total if totals else None,
+        "field_total": field_total if totals else None,
+        "query_totals": dict(zip(_queries_for(idea), totals)),
         "broad": broad,
+        "stale_count": stale_n,
+        "stale_note": f"members not pushed in {months} months; the search itself has no date filter, because old and popular is still 'exists'",
         "total_stars": sum(stars),
         "median_stars": sorted(stars)[len(stars) // 2] if stars else 0,
         "median_note": "median of the matches returned, which GitHub sorts by stars; the field's real median is not higher",
@@ -303,18 +375,22 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
 
 
 def _verdict(idea: str, cluster: list[Asset], stars: list[int], leader: Asset | None, *, months: int, broad: bool, total: int,
-             errors: list[str], excluded: Asset | None, capped: bool, related: int = 0, top_related: Asset | None = None) -> str:
-    span = f"the last {months} months"
+             errors: list[str], excluded: Asset | None, capped: bool, related: int = 0, top_related: Asset | None = None,
+             sentence_total: int = 0) -> str:
+
     if not cluster:
-        if errors:
+        if errors and not total and not related:
             return f"The search failed ({len(errors)} source errors; see source_errors). Nothing can be concluded about \"{idea}\"."
         tail = f" The strongest repository above max_stars was {excluded.title} ({excluded.stats.get('stars', 0)} stars)." if excluded else ""
         if top_related is not None:
             size = f"at least {total:,}" if total > related else f"{related}"
-            return (f"Nothing on GitHub matches the whole of \"{idea}\" in {span}, but the field exists: {size} repositories share "
+            return (f"Nothing on GitHub matches the whole of \"{idea}\" (searched without a date limit), but the field exists: {size} repositories share "
                     f"part of the job, the strongest among the fetched {top_related.title} ({top_related.stats.get('stars', 0)} stars). The combination may be new; "
                     f"the parts are not. Read the strongest before building.{tail}")
-        return (f"Nothing close to \"{idea}\" found on GitHub in {span}. If that holds after a second search with other words "
+        if related:
+            return (f"Nothing on GitHub matches \"{idea}\" (no date limit). {related} repositories share its general words but not its "
+                    f"distinctive ones, so the specific part looks new; the general part is not. See related.{tail}")
+        return (f"Nothing close to \"{idea}\" found on GitHub (no date limit). If that holds after a second search with other words "
                 f"(the search is English and literal), this is new.{tail}")
     n = len(cluster)
     cutoff = (date.today() - timedelta(days=90)).isoformat()
@@ -324,7 +400,7 @@ def _verdict(idea: str, cluster: list[Asset], stars: list[int], leader: Asset | 
     lead_stars = leader.stats.get("stars", 0) if leader else 0
     excl = f" {excluded.title} ({excluded.stats.get('stars', 0)} stars) was excluded by max_stars." if excluded else ""
     if broad:
-        return (f"\"{idea}\" is a field, not a gap: the first search alone has {total:,} repositories. These are the {n} most "
+        return (f"\"{idea}\" is a field, not a gap: the search for the whole sentence has {sentence_total:,} repositories. These are the {n} most "
                 f"relevant among the most-starred; the top is {leader.title} ({lead_stars} stars, {life(leader)}). "
                 f"Narrow the idea to the specific job and search again before concluding anything.{excl}")
     if n == 1:
@@ -339,14 +415,14 @@ def _verdict(idea: str, cluster: list[Asset], stars: list[int], leader: Asset | 
         return (f"\"{idea}\" exists {about} times, all inactive or archived (top {leader.title}, {lead_stars} stars, {life(leader)}). "
                 f"The idea is not new; the field is open. Start from the best of them, with credit.{excl}")
     if lead_stars >= 500:
-        return (f"\"{idea}\" exists: {about} implementations in {span}, and {leader.title} ({lead_stars} stars, {life(leader)}) already won. "
+        return (f"\"{idea}\" exists: {about} implementations, and {leader.title} ({lead_stars} stars, {life(leader)}) already won. "
                 f"Building another one will get the median {med} stars (median of the most-starred matches; the real one is lower). "
                 f"Contribute the missing piece to {leader.title} instead, or build only what nobody has.{excl}")
     if lead_stars >= 50:
         rest = f"the other one has {med_others}" if n == 2 else f"the other {n - 1} have a median of {med_others}"
-        return (f"\"{idea}\" exists {about} times in {span}. The leader is {leader.title} ({lead_stars} stars, {life(leader)}); {rest}. They have pieces the leader lacks (only_here); features_nobody_has lists what none has. "
+        return (f"\"{idea}\" exists {about} times. The leader is {leader.title} ({lead_stars} stars, {life(leader)}); {rest}. They have pieces the leader lacks (only_here); features_nobody_has lists what none has. "
                 f"Contribute the missing piece to the leader, build only what nobody has, or propose a merge (propose_merge).{excl}")
-    return (f"\"{idea}\" exists {about} times in {span}; the top has {max(stars)} stars, the median is {med}. "
+    return (f"\"{idea}\" exists {about} times; the top has {max(stars)} stars, the median is {med}. "
             f"That is {n} people who each built the same thing and got about {med} stars for it. "
             f"The product that would win is the merge: see features_anyone_has and only_here. Propose it (propose_merge) or join the most active one.{excl}")
 
