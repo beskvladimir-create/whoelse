@@ -531,7 +531,8 @@ def _eligible(r: dict[str, Any], me: str | None) -> str | None:
     return None
 
 
-def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = None, me: str | None = None) -> dict[str, Any]:
+def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = None, me: str | None = None,
+               batch: bool = False) -> dict[str, Any]:
     """From a duplicates cluster: which repo is the base (the living leader), what each other repo
     contributes (its only_here features), who the authors are, and the text of the issue each author
     receives. Nothing is sent by this function. `plan_url` is where the plan will be readable (the
@@ -542,9 +543,19 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
     if len(cluster) < MIN_CLUSTER_FOR_MERGE:
         raise ValueError(f"a merge proposal needs at least {MIN_CLUSTER_FOR_MERGE} living, askable repositories (found {len(cluster)}; "
                          f"skipped: {', '.join(f'{k} ({v})' for k, v in skipped.items()) or 'none'})")
+    deferred: list[str] = []
     if len(cluster) > MAX_CLUSTER_FOR_MERGE:
-        raise ValueError(f"{len(cluster)} repositories is a mailing, not a proposal (limit {MAX_CLUSTER_FOR_MERGE}). "
-                         f"Narrow the idea to the specific job, or set max_stars, and try again.")
+        if not batch:
+            raise ValueError(f"{len(cluster)} repositories is a mailing, not a proposal (limit {MAX_CLUSTER_FOR_MERGE}). "
+                             f"Narrow the idea to the specific job, set max_stars, or ask for batch=true: the most-starred living "
+                             f"one as the base plus the {MAX_CLUSTER_FOR_MERGE - 1} most recently active, the rest deferred to a later round.")
+        cutoff0 = (date.today() - timedelta(days=90)).isoformat()
+        alive0 = [r for r in cluster if (r["pushed"] or "") >= cutoff0]
+        base0 = max(alive0 or cluster, key=lambda r: (r["stars"], r["pushed"] or ""))
+        rest = sorted((r for r in cluster if r is not base0), key=lambda r: r["pushed"] or "", reverse=True)
+        keep = [base0] + rest[: MAX_CLUSTER_FOR_MERGE - 1]
+        deferred = [r["repo"] for r in rest[MAX_CLUSTER_FOR_MERGE - 1:]]
+        cluster = [r for r in cluster if r in keep]
     stars = sorted(r["stars"] for r in cluster)
     median = stars[len(stars) // 2]
     total = sum(stars)
@@ -580,7 +591,8 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
                 "**How to say yes:** reply \"in\" on the issue in your repository, or open an issue in the merged repository. How to say no: ignore it.", ""]
     plan_text = "\n".join(plan_md)
 
-    issue_title = f"{len(cluster)} of us built the same thing. Merge?"
+    n_all = len(cluster) + len(deferred)
+    issue_title = f"{n_all} of us built the same thing. Merge?"
     plan_ref = f"The plan: {plan_url}" if plan_url else "The plan is below."
     issues = []
     for r in cluster:
@@ -595,8 +607,9 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
         else:
             role = (f"Proposal: one repository with all of us as maintainers, `{base['repo']}` as the base ({plural(base['stars'], 'star')}), "
                     f"your piece ported with your authorship. Yours has what the others don't: **{brings(r)}**.")
+        more = f" (this round asks {len(cluster)} of them; the rest follow)" if deferred else ""
         body = (f"Hi {r['owner']},\n\n"
-                f"`{r['repo']}` is one of {len(cluster)} repositories that solve \"{dup['idea']}\": {shown}. "
+                f"`{r['repo']}` is one of {n_all} repositories that solve \"{dup['idea']}\": {shown}{more}. "
                 f"The median has {plural(median, 'star')}; none has everything.\n\n"
                 f"{role} First release by {deadline}. {plan_ref}\n\n"
                 f"Nothing is deleted. Your repository stays; you decide whether to point it at the merged one.\n\n"
@@ -614,6 +627,7 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
         "plan_md": plan_text,
         "issues": issues,
         "skipped": skipped,
+        "deferred": deferred,
         "rules": [
             "Open one issue per repository, from the user's own GitHub account, each author sees the same plan.",
             "No issue is opened without the user's explicit yes to these exact texts; the plan_id binds the yes to them.",

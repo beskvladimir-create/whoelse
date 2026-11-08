@@ -216,3 +216,14 @@ def test_hyphen_parts_count_once_and_actions_are_required():
     assert "block" in dup._actions_in("a Chrome extension that blocks AI-generated images")
     assert not dup._actions_in("Track AI-generated code in your repos") & {"block"}
     assert "convert" in dup._actions_in("converts notebooks") and "convert" in dup._actions_in("A notebook exporter")
+
+
+def test_batch_takes_leader_plus_most_recent_and_defers_the_rest():
+    rows = [_row(f"u{i}/r{i}", 1, pushed=f"2026-{(i % 5) + 6:02d}-15") for i in range(30)]
+    rows[0]["stars"] = 300
+    with pytest.raises(ValueError, match="batch=true"):
+        dup.merge_plan(_dup(rows))
+    plan = dup.merge_plan(_dup(rows), batch=True)
+    assert plan["base"] == "u0/r0" and len(plan["issues"]) == dup.MAX_CLUSTER_FOR_MERGE
+    assert plan["issues"][0]["title"].startswith("30 of us") and "this round asks 15" in plan["issues"][1]["body"]
+    assert len(plan["deferred"]) == 30 - dup.MAX_CLUSTER_FOR_MERGE

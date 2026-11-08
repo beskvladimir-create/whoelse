@@ -406,7 +406,7 @@ def _plan_id(plan: dict[str, Any]) -> str:
 
 @mcp.tool()
 async def propose_merge(idea: str, months: int = 24, max_stars: int | None = None, open_issues: bool = False,
-                        plan_url: str | None = None, plan_id: str | None = None) -> dict[str, Any]:
+                        plan_url: str | None = None, plan_id: str | None = None, batch: bool = False) -> dict[str, Any]:
     """For a cluster of near-identical small repositories: a merge plan (the living leader as the
     base, what each one brings, every author a maintainer, a deadline) and the text of the issue
     each author would receive in their own repository. First call: returns the plan, the issue texts
@@ -415,7 +415,8 @@ async def propose_merge(idea: str, months: int = 24, max_stars: int | None = Non
     it the plan goes inline). Exactly the shown texts are posted, from the user's GitHub account.
     Limits (GitHub acceptable use): 3 to 15 askable repositories, 10 issues per run and per day,
     never twice to one repository, never to archived, forked, organisation-owned or 1000+-star
-    repositories or ones with issues disabled, never to the user's own."""
+    repositories or ones with issues disabled, never to the user's own. For a cluster above 15,
+    batch=true takes the living leader plus the 14 most recently active and defers the rest."""
     import asyncio
     if open_issues:
         if not plan_id or plan_id not in _plans:
@@ -455,7 +456,7 @@ async def propose_merge(idea: str, months: int = 24, max_stars: int | None = Non
         return {"verdict": d["verdict"], "cluster": d["cluster"],
                 "note": f"fewer than {dup.MIN_CLUSTER_FOR_MERGE} repositories; contribute to the leader instead of merging"}
     try:
-        plan = dup.merge_plan(d, plan_url=plan_url, me=await dup.my_login())
+        plan = dup.merge_plan(d, plan_url=plan_url, me=await dup.my_login(), batch=batch)
     except ValueError as e:
         raise ToolError(str(e))
     pid = _plan_id(plan)
