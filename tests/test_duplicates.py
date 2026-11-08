@@ -239,3 +239,11 @@ async def test_distinctive_word_required_and_verb_not_counted():
     groups = dup._job_groups(toks)
     core = [g for g in groups if not all(t in dup._ACTION_VERBS for t in g)]
     assert {"generator"} not in core and {"vault"} in core and {"site"} in core
+
+
+async def test_no_merge_proposal_when_someone_has_won(monkeypatch):
+    async def fake(idea, **kw):
+        return {"count": 5, "leader": {"repo": "big/one", "stars": 5000}, "verdict": "won", "cluster": [], "broad": False, "search_total": 5}
+    monkeypatch.setattr(dup, "find_duplicates", fake)
+    m = await server.propose_merge("anything at all here")
+    assert "plan" not in m and "decided" in m["note"]

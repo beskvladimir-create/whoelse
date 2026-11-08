@@ -457,6 +457,10 @@ async def propose_merge(idea: str, months: int = 24, max_stars: int | None = Non
     if d["count"] < dup.MIN_CLUSTER_FOR_MERGE:
         return {"verdict": d["verdict"], "cluster": d["cluster"],
                 "note": f"fewer than {dup.MIN_CLUSTER_FOR_MERGE} repositories; contribute to the leader instead of merging"}
+    if d["leader"] and d["leader"]["stars"] >= dup.WON_STARS:
+        return {"verdict": d["verdict"], "leader": d["leader"],
+                "note": f"{d['leader']['repo']} has {d['leader']['stars']} stars: this field is decided. A merge of the small ones would "
+                        f"compete with it; the honest proposal is a contribution to the leader (find_duplicates lists what it lacks)."}
     try:
         plan = dup.merge_plan(d, plan_url=plan_url, me=await dup.my_login(), batch=batch, sender_note=dup.clean_idea(sender_note) if sender_note else None)
     except ValueError as e:
