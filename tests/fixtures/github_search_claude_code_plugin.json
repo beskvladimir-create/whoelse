@@ -1,0 +1,53 @@
+{
+ "total_count": 47844,
+ "items": [
+  {
+   "full_name": "thedotmack/claude-mem",
+   "html_url": "https://github.com/thedotmack/claude-mem",
+   "description": "Memory plugin for Claude Code",
+   "topics": [],
+   "language": "TypeScript",
+   "stargazers_count": 114578,
+   "forks_count": 0,
+   "pushed_at": "2026-11-01T00:00:00Z",
+   "owner": {
+    "login": "thedotmack"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "x/claude-hud",
+   "html_url": "https://github.com/x/claude-hud",
+   "description": "A HUD for Claude Code",
+   "topics": [],
+   "language": "TypeScript",
+   "stargazers_count": 3000,
+   "forks_count": 0,
+   "pushed_at": "2026-11-01T00:00:00Z",
+   "owner": {
+    "login": "x"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  },
+  {
+   "full_name": "y/cc-backup",
+   "html_url": "https://github.com/y/cc-backup",
+   "description": "Back up Claude Code sessions to a folder, with restore",
+   "topics": [],
+   "language": "Shell",
+   "stargazers_count": 4,
+   "forks_count": 0,
+   "pushed_at": "2026-10-01T00:00:00Z",
+   "owner": {
+    "login": "y"
+   },
+   "license": {
+    "spdx_id": "MIT"
+   }
+  }
+ ]
+}

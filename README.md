@@ -52,6 +52,13 @@ are in the code: 3 to 15 living repositories per proposal, at most 10 issues a d
 apart, never twice to the same repository (a local ledger remembers), never to an archived
 repository or one with issues turned off. One proposal is a conversation; forty is a mailing.
 
+### Put it in front of the agent
+
+`plugin/` is a Claude Code plugin (MCP server plus a `before-you-build` skill) that makes the agent
+call `find_duplicates` before it starts building anything the user describes. For Cursor, Codex and
+other MCP clients the same skill text goes into the rules file. The user sees what exists before the
+first line is generated, which is the only moment the information is worth anything.
+
 ## How it connects strangers
 
 Finding people is the easy half. whoelse is built around the hard half: two people who have never

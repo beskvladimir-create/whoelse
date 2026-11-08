@@ -1,0 +1,11 @@
+{
+  "name": "whoelse",
+  "description": "Before building anything: what already exists on GitHub, who won, what nobody has. And who else is working on what you work on.",
+  "version": "0.1.0",
+  "author": { "name": "Vladimir Beskorovainyi" },
+  "homepage": "https://github.com/beskvladimir-create/whoelse",
+  "license": "MIT",
+  "mcpServers": {
+    "whoelse": { "command": "whoelse" }
+  }
+}

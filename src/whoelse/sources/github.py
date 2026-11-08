@@ -42,11 +42,17 @@ def repo_to_asset(r: dict[str, Any]) -> Asset:
         stats={"stars": int(r.get("stargazers_count") or 0), "forks": int(r.get("forks_count") or 0)},
         coauthors=[((r.get("owner") or {}).get("login") or "")],
         extra={"owner": (r.get("owner") or {}).get("login") or "", "license": ((r.get("license") or {}).get("spdx_id") or ""),
-               "archived": "yes" if r.get("archived") else "", "has_issues": "no" if r.get("has_issues") is False else ""},
+               "archived": "yes" if r.get("archived") else "", "has_issues": "no" if r.get("has_issues") is False else "",
+               "fork": "yes" if r.get("fork") else "", "owner_type": (r.get("owner") or {}).get("type") or ""},
     )
 
 
 async def search_repos(query: str, *, since: date | None = None, limit: int = 30) -> list[Asset]:
+    return (await search_repos_meta(query, since=since, limit=limit))[0]
+
+
+async def search_repos_meta(query: str, *, since: date | None = None, limit: int = 30) -> tuple[list[Asset], int]:
+    """Assets and GitHub's total_count for the query (how many exist, not how many we fetched)."""
     q = query
     if since:
         q += f" pushed:>={since.isoformat()}"
@@ -56,7 +62,9 @@ async def search_repos(query: str, *, since: date | None = None, limit: int = 30
         headers=_headers(),
         fixture_name=f"github_search_{query.lower().replace(' ', '_')[:60]}",
     )
-    return [repo_to_asset(r) for r in (data or {}).get("items", [])]
+    items = (data or {}).get("items", []) if isinstance(data, dict) else []
+    total = int((data or {}).get("total_count") or len(items)) if isinstance(data, dict) else len(items)
+    return [repo_to_asset(r) for r in items], total
 
 
 async def user(login: str) -> Person | None:
