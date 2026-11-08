@@ -118,15 +118,15 @@ that already exists is never overwritten.
 
 Ask your agent:
 
-> Load my profile: Ada Example, ORCID 0000-0002-1825-0097. Who else is working on this?
+> Load my profile: Vladimir Beskorovainyi, ORCID 0009-0004-7005-6242. Who else is working on this?
 
 ```
-7 people are working on what Ada Example is working on (text-to-sql; schema linking).
-4 can be written to today, 1 of them published a whoelse card and said what they're open to.
+25 people are working on what Vladimir Beskorovainyi is working on (personal papers; archives; text classification).
+4 can be written to today.
 
- 0. Nikhil Rao (IIT Madras): same problem: open-weight models, text-to-sql; active 2026-09.   reach: email
- 1. Amine Mhedhbi (Polytechnique Montréal): same problem: text-to-sql; publishes a whoelse card. reach: card ✓
- 2. Paolo Papotti (EURECOM): same problem: text-to-sql; active 2026-11.                        reach: site/github
+ 0. Angelo La Gorga (Universidad Carlos III de Madrid): same problem: personal papers; active 2026-09.           reach: email
+ 1. Fabian Karl (Universität Ulm): same topic: computational and text analysis, text classification; active 2026-01. reach: email
+ 2. Lukas Galke (University of Southern Denmark): same topic: text classification; active 2026-01.                reach: email
 ```
 
 > Start a comparison note with Amine.
