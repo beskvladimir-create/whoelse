@@ -353,7 +353,7 @@ def _email_domain_note(p: Person) -> str | None:
     if not p.contact.email or "@" not in p.contact.email or not p.affiliation:
         return None
     dom = p.contact.email.rsplit("@", 1)[1].lower()
-    labels = [x for x in dom.split(".") if len(x) >= 3 and x not in ("edu", "com", "org", "net", "www")]
+    labels = [x for x in re.split(r"[.-]", dom) if len(x) >= 3 and x not in ("edu", "com", "org", "net", "www", "uni", "univ", "ac")]
     if not labels or labels[0] in _EMAIL_FREE:
         return None
     aff = _aff_tokens(p.affiliation) | {t[:4] for t in _aff_tokens(p.affiliation)}
