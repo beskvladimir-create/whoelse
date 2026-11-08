@@ -1,4 +1,4 @@
-"""Before you build it: what exists, who won, what nobody has; and the merge proposal."""
+"""Don't build it alone: what exists, who won, what nobody has; and the merge proposal."""
 from __future__ import annotations
 
 import pytest
