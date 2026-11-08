@@ -29,25 +29,37 @@ _STOP = {"a", "an", "the", "for", "and", "or", "of", "to", "in", "on", "with", "
          "is", "it", "that", "this", "all", "any", "one", "tool", "tools", "app", "cli", "simple", "fast", "easy", "lightweight",
          "open", "source", "free", "local", "based", "using", "built", "made", "powered", "support", "supports", "across",
          "between", "every", "more", "etc", "like", "just", "also", "new", "best"}
+# Single tokens that name a feature unambiguously. Words that also mean something else ("watch",
+# "merge", "token", "memory", "hook", "drive", "remote", "test") are not here; the phrases below cover them.
 _FEATURE_WORDS = {
-    "encrypt": "encryption", "encrypted": "encryption", "encryption": "encryption", "e2e": "encryption", "end-to-end": "encryption",
+    "encrypt": "encryption", "encrypted": "encryption", "encryption": "encryption", "e2e": "encryption", "e2ee": "encryption",
     "syncthing": "p2p sync", "lan": "LAN sync", "r2": "object storage", "obsidian": "Obsidian",
-    "search": "search", "fts": "search", "full-text": "search",
-    "crdt": "conflict-free merge", "merge": "merge",
-    "tui": "terminal UI", "dashboard": "dashboard", "desktop": "desktop app", "menu": "menu bar", "widget": "desktop app",
-    "ios": "mobile", "android": "mobile", "watch": "wearable", "mobile": "mobile",
-    "git": "git-backed", "github": "git-backed", "drive": "cloud drive", "icloud": "cloud drive", "s3": "object storage",
-    "cloudflare": "cloud sync", "turso": "cloud sync", "self-hosted": "self-hosted", "backend": "self-hosted",
-    "ssh": "remote", "mosh": "remote", "tailscale": "remote", "remote": "remote",
-    "backup": "backup", "restore": "backup", "rollback": "backup",
-    "multi-device": "multi-device", "machines": "multi-device", "devices": "multi-device", "cross-platform": "cross-platform",
+    "fts": "search", "fulltext": "search", "full-text": "search",
+    "crdt": "conflict-free merge",
+    "tui": "terminal UI", "dashboard": "dashboard",
+    "ios": "mobile", "android": "mobile", "mobile": "mobile",
+    "gdrive": "cloud drive", "icloud": "cloud drive", "dropbox": "cloud drive", "s3": "object storage", "minio": "object storage",
+    "cloudflare": "cloud sync", "turso": "cloud sync", "supabase": "cloud sync", "self-hosted": "self-hosted", "selfhosted": "self-hosted",
+    "ssh": "remote", "mosh": "remote", "tailscale": "remote", "wireguard": "remote",
+    "backup": "backup", "backups": "backup", "restore": "backup", "rollback": "backup",
+    "multi-device": "multi-device", "cross-platform": "cross-platform",
     "windows": "windows", "macos": "macos", "linux": "linux",
-    "mcp": "MCP server", "plugin": "plugin", "hook": "hooks", "hooks": "hooks", "skill": "skill",
+    "mcp": "MCP server", "plugin": "plugin", "hooks": "hooks", "skill": "skill",
     "codex": "Codex", "cursor": "Cursor", "gemini": "Gemini", "opencode": "OpenCode", "copilot": "Copilot",
-    "token": "token tracking", "cost": "cost tracking", "usage": "usage tracking", "analytics": "analytics",
-    "memory": "memory", "config": "config sync", "settings": "config sync", "dotfiles": "config sync",
+    "analytics": "analytics", "dotfiles": "config sync",
     "telegram": "messenger bridge", "wechat": "messenger bridge", "discord": "messenger bridge", "slack": "messenger bridge",
-    "tests": "tests", "test": "tests", "ci": "CI", "docker": "docker", "homebrew": "homebrew", "npm": "npm", "pip": "pip",
+    "tests": "tests", "pytest": "tests", "ci": "CI", "docker": "docker", "homebrew": "homebrew", "npm": "npm", "pip": "pip",
+}
+_FEATURE_PHRASES = {
+    "end to end": "encryption", "end-to-end": "encryption", "menu bar": "menu bar", "menubar": "menu bar",
+    "google drive": "cloud drive", "desktop app": "desktop app", "electron": "desktop app", "tauri": "desktop app",
+    "token usage": "usage tracking", "usage tracking": "usage tracking", "cost tracking": "cost tracking", "token cost": "cost tracking",
+    "across machines": "multi-device", "across devices": "multi-device", "multiple machines": "multi-device", "multiple devices": "multi-device",
+    "git backed": "git-backed", "git-backed": "git-backed", "git repo": "git-backed", "git repository": "git-backed", "via git": "git-backed",
+    "settings sync": "config sync", "config sync": "config sync", "sync config": "config sync", "sync settings": "config sync",
+    "full text search": "search", "search sessions": "search", "search history": "search", "searchable": "search",
+    "github actions": "CI", "test coverage": "tests", "unit tests": "tests",
+    "remote machine": "remote", "remote server": "remote",
 }
 
 
@@ -56,11 +68,14 @@ def _tokens(text: str) -> list[str]:
 
 
 def _features(repo: Asset) -> set[str]:
-    text = fold(repo.title.split("/")[-1] + " " + repo.summary + " " + " ".join(repo.keywords))
+    text = fold(repo.title.split("/")[-1].replace("-", " ") + " " + repo.summary + " " + " ".join(repo.keywords))
     out = set()
     for tok in re.findall(r"[a-z0-9][a-z0-9+.-]*", text):
         if tok in _FEATURE_WORDS:
             out.add(_FEATURE_WORDS[tok])
+    for phrase, feat in _FEATURE_PHRASES.items():
+        if phrase in text:
+            out.add(feat)
     if repo.extra.get("license"):
         out.add(f"license: {repo.extra['license']}")
     return out
@@ -173,8 +188,13 @@ def _verdict(idea: str, cluster: list[Asset], stars: list[int], leader: Asset | 
         return (f"\"{idea}\" exists: {n} implementations, and {big[0].title} ({big[0].stats.get('stars', 0)} stars) already won. "
                 f"Building another one will get the median {sorted(stars)[n // 2]} stars. Contribute the missing piece to {big[0].title} instead, "
                 f"or build only what nobody has.")
-    return (f"\"{idea}\" exists {n} times, none above {max(stars)} stars; the median is {sorted(stars)[n // 2]}. "
-            f"That is {n} people who each built the same thing and got {sorted(stars)[n // 2]} stars for it. "
+    med = sorted(stars)[n // 2]
+    if leader is not None and leader.stats.get("stars", 0) >= 50:
+        return (f"\"{idea}\" exists {n} times. The leader is {leader.title} ({leader.stats.get('stars', 0)} stars); the other "
+                f"{n - 1} have a median of {med}. Between them they have pieces the leader lacks (see only_here); nobody has: "
+                f"features_nobody_has. Contribute the missing backend to the leader, build only what nobody has, or propose a merge (propose_merge).")
+    return (f"\"{idea}\" exists {n} times, none above {max(stars)} stars; the median is {med}. "
+            f"That is {n} people who each built the same thing and got {med} stars for it. "
             f"The product that would win is the merge: see features_anyone_has and only_here. Propose it to them (propose_merge) or join the most active one.")
 
 
