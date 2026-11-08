@@ -74,6 +74,10 @@ call `find_duplicates` before it starts building anything the user describes. Fo
 other MCP clients the same skill text goes into the rules file. The user sees what exists before the
 first line is generated, which is the only moment the information is worth anything.
 
+Real runs, one page per idea, are in [docs/clusters](docs/clusters/README.md): session sync for
+Claude Code, arXiv MCP servers, PII anonymization for LLMs, token-cost dashboards, Obsidian site
+generators, DICOM in Rust.
+
 ## How it connects strangers
 
 Finding people is the easy half. whoelse is built around the hard half: two people who have never
