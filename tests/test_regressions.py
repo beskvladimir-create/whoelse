@@ -317,3 +317,27 @@ def test_handle_only_accounts_are_flagged_and_not_counted_as_reachable_people():
     cands = [Candidate(person=bot, score=1, overlap=Overlap(), why="", reachable="email"),
              Candidate(person=human, score=1, overlap=Overlap(), why="", reachable="email")]
     assert "1 can be written to today" in _headline(Profile(name="Me"), cands)
+
+
+def test_bucket_topic_alone_cannot_carry_a_candidate():
+    """Live finding on the author's profile: a whole lab surfaced because it shared the OpenAlex
+    bucket topic "Topic Modeling" and nothing else. Topics now carry document frequency and the
+    known buckets are damped; recency multiplies overlap instead of adding to it; the gate needs a
+    keyword, a keyword-search hit, a card or a specific topic."""
+    from datetime import date
+    from whoelse.match import score, GENERIC_TOPICS
+    from whoelse.models import Asset, Person, Profile
+    bucket = Asset(kind="paper", title="x", url="", source="openalex", date=date.today(), topics=["Topic Modeling"], topic_ids=["T10028"])
+    me = Profile(name="Me", topic_ids={"T10028": 3.0, "T12345": 1.0}, topics={"Topic Modeling": 3.0, "Natural Language Interfaces to Databases": 1.0},
+                 keywords={"text-to-sql": 2.0}, assets=[bucket])
+    lab = Person(name="Lab Member", topic_ids={"T10028": 5.0}, assets=[bucket], last_active=date.today())
+    peer = Person(name="Real Peer", topic_ids={"T12345": 2.0}, keywords={"text-to-sql": 1.0}, assets=[bucket], last_active=date.today())
+    kw = dict(df={"text-to-sql": 2}, n_docs=40, topic_df={"T10028": 30, "T12345": 2}, generic_topic_ids={"T10028"})
+    s_lab, ov_lab = score(me, lab, recent_months=24, **kw)
+    s_peer, ov_peer = score(me, peer, recent_months=24, **kw)
+    assert s_peer > 3 * s_lab
+    assert not ov_lab.shared_keywords and all(t in GENERIC_TOPICS for t in ov_lab.shared_topics)   # the gate would drop the lab
+    # a fresh author off the subject gets nothing from freshness
+    stale_peer = Person(name="Stale Peer", topic_ids={"T12345": 2.0}, keywords={"text-to-sql": 1.0}, assets=[bucket], last_active=date(2024, 1, 1))
+    s_stale, _ = score(me, stale_peer, recent_months=24, **kw)
+    assert s_lab < s_stale < s_peer

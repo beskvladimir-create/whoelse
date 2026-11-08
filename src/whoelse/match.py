@@ -82,9 +82,9 @@ GENERIC = {
 }
 
 
-def _idf(df: dict[str, int] | None, k: str, n_docs: int) -> float:
+def _idf(df: dict[str, int] | None, k: str, n_docs: int, generic: frozenset[str] | set[str] | None = None) -> float:
     """Down-weight terms that appear across many candidates (and the hard-coded generic ones)."""
-    if k in GENERIC:
+    if k in (GENERIC if generic is None else generic):
         return 0.08
     if not df or n_docs <= 1:
         return 1.0
@@ -92,12 +92,13 @@ def _idf(df: dict[str, int] | None, k: str, n_docs: int) -> float:
 
 
 def _weighted_overlap(
-    a: dict[str, float], b: dict[str, float], *, df: dict[str, int] | None = None, n_docs: int = 0
+    a: dict[str, float], b: dict[str, float], *, df: dict[str, int] | None = None, n_docs: int = 0,
+    generic: set[str] | None = None,
 ) -> tuple[float, list[str]]:
     if not a or not b:
         return 0.0, []
     shared = [k for k in a if k in b]
-    w = {k: _idf(df, k, n_docs) for k in set(a) | set(b)}
+    w = {k: _idf(df, k, n_docs, generic) for k in set(a) | set(b)}
     # apply the weight to the mass itself, on both sides, so a generic term cannot carry the score
     aw = {k: v * w[k] for k, v in a.items()}
     bw = {k: v * w[k] for k, v in b.items()}
@@ -108,14 +109,22 @@ def _weighted_overlap(
 
 
 def score(
-    me: Profile, p: Person, *, recent_months: int, df: dict[str, int] | None = None, n_docs: int = 0
+    me: Profile, p: Person, *, recent_months: int, df: dict[str, int] | None = None, n_docs: int = 0,
+    topic_df: dict[str, int] | None = None, generic_topic_ids: set[str] | None = None,
 ) -> tuple[float, Overlap]:
-    t_score, t_shared = _weighted_overlap(me.topic_ids, p.topic_ids)
+    # Topics get the same treatment as keywords: a topic half the pool shares (OpenAlex's "Topic
+    # Modeling" is a bucket, not a subject) is damped by its document frequency, and the known
+    # bucket topics are damped outright, so sharing only a bucket cannot carry a candidate.
+    t_score, t_shared = _weighted_overlap(me.topic_ids, p.topic_ids, df=topic_df, n_docs=n_docs, generic=generic_topic_ids or set())
     k_score, k_shared = _weighted_overlap(me.keywords, p.keywords, df=df, n_docs=n_docs)
     kid_score, _ = _weighted_overlap(me.keyword_ids, p.keyword_ids, df=df, n_docs=n_docs)
     # OpenAlex topics are coarse (a text-to-SQL paper lands in "Topic Modeling"); keywords are
     # what actually says "same problem". Free-text keywords also cover code and models.
     overlap_score = 0.25 * t_score + 0.45 * max(k_score, kid_score) + 0.30 * k_score
+    if overlap_score == 0.0 and _from_keyword_search(p):
+        # found by a query on the user's own terms (arXiv/GitHub/HF carry no OpenAlex keywords):
+        # that is measured overlap, at the level of one shared keyword
+        overlap_score = 0.15
 
     my_kinds = {a.kind for a in me.assets}
     their_kinds = {a.kind for a in p.assets}
@@ -123,10 +132,12 @@ def score(
     you_have = sorted(my_kinds - their_kinds)
     complement = 0.1 * min(len(they_have) + len(you_have), 2)
 
+    # Recency multiplies the overlap instead of adding to it: a fresh author off the subject
+    # stays off the list; a fresh author on the subject rises above a stale one.
     recency = 0.0
     if p.last_active:
         months = (date.today() - p.last_active).days / 30.4
-        recency = max(0.0, 1.0 - months / max(recent_months, 1)) * 0.2
+        recency = max(0.0, 1.0 - months / max(recent_months, 1)) * 0.5 * overlap_score
 
     already = any(_norm_name(c) == _norm_name(me.name) for a in p.assets for c in a.coauthors)
     penalty = 0.5 if already else 0.0
@@ -401,8 +412,8 @@ async def find_overlaps(
     include_code: bool = True,
     include_models: bool = True,
     enrich_top: int = 30,
-    topic_limit: int = 5,
-    keyword_queries: int = 3,
+    topic_limit: int = 2,
+    keyword_queries: int = 4,
     lookup_github_by_name: bool = True,
 ) -> tuple[list[Candidate], list[str], list[Person]]:
     """Returns (candidates, source_errors, people_you_already_publish_with)."""
@@ -485,7 +496,11 @@ async def find_overlaps(
             errors.append(f"huggingface '{q}': {e}")
 
     tasks = [papers_by_keyword(k) for k in list(me.keyword_ids)[:keyword_queries + 2]]
-    tasks += [papers_by_topic(t) for t in list(me.topic_ids)[:topic_limit]]
+    # Seed from the user's specific topics only: a bucket topic pulls in a lab's worth of strangers
+    # who share nothing but the bucket (seen live: "Topic Modeling" filling the pool with one lab).
+    my_topic_names = {tid: name for a in me.assets for tid, name in zip(a.topic_ids, a.topics)}
+    specific_topics = [t for t in me.topic_ids if my_topic_names.get(t, "") not in GENERIC_TOPICS]
+    tasks += [papers_by_topic(t) for t in specific_topics[:topic_limit]]
     queries = [k for k in me.keywords if len(k) >= 5 and k not in GENERIC][:keyword_queries]
     tasks += [papers_by_query(q) for q in queries]
     tasks += [preprints_by_query(q) for q in queries[:2]]
@@ -501,15 +516,31 @@ async def find_overlaps(
         aggregate(p)
     # document frequency over the candidate pool: a keyword everyone shares says nothing
     df: dict[str, int] = {}
+    topic_df: dict[str, int] = {}
+    generic_topic_ids: set[str] = set()
     for p in people:
         for k in set(p.keywords) | set(p.keyword_ids):
             df[k] = df.get(k, 0) + 1
+        for t in set(p.topic_ids):
+            topic_df[t] = topic_df.get(t, 0) + 1
+        for a in p.assets:
+            for tid, name in zip(a.topic_ids, a.topics):
+                if name in GENERIC_TOPICS:
+                    generic_topic_ids.add(tid)
+    for a in me.assets:
+        for tid, name in zip(a.topic_ids, a.topics):
+            if name in GENERIC_TOPICS:
+                generic_topic_ids.add(tid)
     n_docs = len(people)
+    kw = dict(df=df, n_docs=n_docs, topic_df=topic_df, generic_topic_ids=generic_topic_ids)
 
     scored: list[tuple[float, Person, Overlap]] = []
     for p in people:
-        s, ov = score(me, p, recent_months=recent_months, df=df, n_docs=n_docs)
-        if s > 0.02 and (ov.measured or _from_keyword_search(p)):
+        s, ov = score(me, p, recent_months=recent_months, **kw)
+        # a real signal is a shared keyword, a keyword-search hit, a card, or a specific (non-bucket) topic
+        has_signal = bool(ov.shared_keywords) or _from_keyword_search(p) or p.card is not None
+        strong_topic = any(t not in GENERIC_TOPICS for t in ov.shared_topics)
+        if s > 0.05 and (has_signal or strong_topic):
             scored.append((s, p, ov))
     scored.sort(key=lambda x: -x[0])
 
@@ -542,7 +573,7 @@ async def find_overlaps(
             continue
         p.assets = dedupe_assets(p.assets)
         aggregate(p)
-        s, ov = score(me, p, recent_months=recent_months, df=df, n_docs=n_docs)
+        s, ov = score(me, p, recent_months=recent_months, **kw)
         s += {"card": 0.2, "email": 0.05, "website": 0.02, "profile_only": 0.0}[_reachable(p)]
         out.append(Candidate(person=p, score=round(s, 3), overlap=ov, why=_why(p, ov), reachable=_reachable(p)))  # type: ignore[arg-type]
     out.sort(key=lambda c: -c.score)

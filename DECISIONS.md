@@ -102,3 +102,16 @@ ResearcherCollab, CollabFinder (sites with manual profiles), openalex-research-m
 data). The section "Before you build it" was renamed "Don't build it alone" to stop sharing a name
 with a stranger's project and to say what is different: whoelse starts where idea checkers stop.
 Searched in English only, GitHub and the open web; closed products and other languages not covered.
+
+## 2026-11-08, first live run on the author's profile (reported from his machine)
+
+The list was dominated by one lab (Emory) that shared a single OpenAlex topic with the author,
+"Topic Modeling", a bucket that holds half of NLP. Two causes: the pool was seeded with 100 works
+from each of the five top topics, bucket included; and topics were scored without document
+frequency, so a bucket counted as much as a specific topic, with recency (up to 0.2) added on top.
+Fixes, mirrored from what keywords already had: topic document frequency over the pool and damping
+of the known bucket topics; the pool is seeded from the author's specific topics only (two of
+them), with more keyword queries instead; recency multiplies overlap rather than adding to it;
+the gate needs a shared keyword, a keyword-search hit, a card or a specific topic, and a score
+above 0.05. A keyword-search hit with no OpenAlex keywords counts as one shared keyword, so arXiv
+preprints found on the author's own terms keep their place.
