@@ -103,10 +103,47 @@ async def test_publish_request_needs_confirmation_then_matches():
 
 # ---- workspace
 
-def test_repo_name_is_deterministic_ascii_and_symmetric():
-    assert repo_name("Vladimir Бескоровайный", "Ana Peña", "Text-to-SQL: closed data") == repo_name("Ana Peña", "Vladimir Бескоровайный", "Text-to-SQL: closed data")
-    n = repo_name("Vladimir Beskorovainyi", "Ana Ferreira", TOPIC)
-    assert n == "beskorovainyi-ferreira-text-to-sql-on-closed-enterprise-data" and n.isascii()
+def test_repo_name_is_deterministic_ascii_symmetric_and_collision_free():
+    assert repo_name("Vladimir Бескоровайный", "Ana Peña", "text-to-sql") == repo_name("Ana Peña", "Vladimir Бескоровайный", "text-to-sql")
+    n = repo_name("Vladimir Beskorovainyi", "Ana Ferreira", "text-to-sql")
+    assert n.startswith("beskorovainyi-ferreira-text-to-sql-") and n.isascii() and len(n) <= 80
+    # same surnames, different people -> different repos
+    assert n != repo_name("Ivan Beskorovainyi", "Maria Ferreira", "text-to-sql")
+    # CJK names do not collapse to the same name
+    assert repo_name("李伟", "王芳", "x") != repo_name("张伟", "刘芳", "x")
+    # the name depends on the shared key, never on either side's topic wording
+    assert repo_name("A B", "C D", "text-to-sql") == repo_name("C D", "A B", "text-to-sql")
+
+
+def test_both_watchers_compute_the_same_repo_name_despite_different_topics():
+    """Ana's topic text differs from Vladimir's; the matched keyword is what both derive the name from."""
+    base = {"contact": "x@y.co", "has": [], "ids": {}}
+    mine = {**base, "name": "Vladimir Beskorovainyi", "keywords": ["text-to-sql"], "wants": [{"format": "compare_note", "topic": "text-to-SQL on closed enterprise data"}]}
+    ana = {**base, "name": "Ana Ferreira", "keywords": ["text-to-sql"], "wants": [{"format": "compare_note", "topic": "text-to-SQL for public data portals"}]}
+    m1 = net.match_requests(mine, [ana])[0]
+    m2 = net.match_requests(ana, [mine])[0]
+    assert m1["shared"] == m2["shared"] == ["text-to-sql"]
+    assert repo_name("Vladimir Beskorovainyi", "Ana Ferreira", m1["shared"][0]) == repo_name("Ana Ferreira", "Vladimir Beskorovainyi", m2["shared"][0])
+
+
+def test_registry_blob_decoding_and_hostile_unicode():
+    import base64
+    good = {"name": "Ana Ferreira", "contact": "a@b.co", "wants": [{"format": "compare_note", "topic": "xyz"}]}
+    blob = {"encoding": "base64", "content": base64.b64encode(json.dumps(good).encode()).decode()}
+    assert net._decode_blob(blob) == good
+    assert net._decode_blob({"encoding": "base64", "content": "!!notbase64!!"}) is None
+    # RTL override / zero-width in a name are stripped, not stored
+    r = net.parse_request({"name": "Ana\u202e Ferreira\u200b", "contact": "a@b.co", "wants": [{"format": "compare_note", "topic": "x\u200by z"}]})
+    assert r and r.name == "Ana Ferreira" and r.wants[0].topic == "xy z"
+    assert net.parse_request({"name": "<script>x</script> Smith", "contact": "a@b.co", "wants": [{"format": "compare_note", "topic": "xyz"}]}) is None
+    assert net.parse_request({"name": "A B", "contact": "a@b.co", "wants": [{"format": "compare_note", "topic": "xyz"}], "spec": "s" * 300}) is None
+
+
+def test_tooling_keywords_are_not_evidence():
+    base = {"contact": "x@y.co", "has": [], "ids": {}}
+    mine = {**base, "name": "Me Myself", "keywords": ["python", "pytorch", "transformers"], "wants": [{"format": "compare_note", "topic": "a b c"}]}
+    other = {**base, "name": "O P", "keywords": ["python", "pytorch", "transformers"], "wants": [{"format": "compare_note", "topic": "d e f"}]}
+    assert net.match_requests(mine, [other]) == []
 
 
 async def test_workspace_quotes_published_numbers_and_is_honest_without_papers():
@@ -216,12 +253,14 @@ async def test_waiting_side_joins_when_creator_repo_appears(monkeypatch):
     sent = []
     monkeypatch.setattr("whoelse.watch.notify", lambda subj, body, to: sent.append((to, body)) or "stub")
 
+    expected = repo_name("Vladimir Beskorovainyi", "Ana Ferreira", "text-to-sql")
+
     async def exists(full_name):
-        return "https://github.com/anaferreira/" + full_name.split("/")[1] if full_name.startswith("anaferreira/") else None
+        return "https://github.com/" + full_name if full_name == f"anaferreira/{expected}" else None
     monkeypatch.setattr("whoelse.watch._repo_exists", exists)
     events = await one_pass()
     e = [x for x in events if x.get("pair") == "Ana Ferreira|Vladimir Beskorovainyi"][0]
-    assert e["status"] == "joined" and e["repo"].endswith(repo_name("Vladimir Beskorovainyi", "Ana Ferreira", TOPIC))
+    assert e["status"] == "joined" and e["repo"].endswith(expected)
     assert sent and sent[0][0] == "vladimir@besk.tech"
 
 
@@ -246,3 +285,36 @@ def test_notify_never_forges_sender(monkeypatch, tmp_path):
     monkeypatch.delenv("WHOELSE_SMTP_FROM", raising=False)
     monkeypatch.delenv("WHOELSE_SMTP_USER", raising=False)
     assert watch.notify("s", "b", "someone@else.example") == "inbox"  # no From: falls back, no send
+
+
+async def test_dry_run_does_not_start_the_waiting_clock():
+    await _me_published()
+    await one_pass(dry_run=True)
+    assert "Ana Ferreira|Vladimir Beskorovainyi" not in load_state()
+
+
+async def test_corrupt_state_self_heals():
+    await _me_published()
+    save_state({"Ana Ferreira|Vladimir Beskorovainyi": {"role": "wait", "waiting_since": 12345}, "Vladimir Beskorovainyi|Yusuf Demir": "garbage"})
+    events = await one_pass(dry_run=True)
+    statuses = {e["pair"]: e["status"] for e in events if "pair" in e}
+    assert statuses["Ana Ferreira|Vladimir Beskorovainyi"] == "waiting"
+    assert statuses["Vladimir Beskorovainyi|Yusuf Demir"] == "dry_run"
+
+
+def test_registry_ci_blocks_overwriting_someone_elses_file(tmp_path):
+    """Replays the CI script's logic on a fake base/pr pair."""
+    import subprocess, sys, textwrap
+    script = Path("registry/.github/workflows/check.yml").read_text().split("python - <<'PY'")[1].split("PY\n")[0]
+    script = textwrap.dedent(script)
+    (tmp_path / "base" / "people").mkdir(parents=True); (tmp_path / "pr" / "people").mkdir(parents=True)
+    ana = {"name": "Ana Ferreira", "contact": "ana@ufmg.example", "ids": {"github": "anaferreira"}, "wants": [{"format": "compare_note", "topic": "xyz"}]}
+    (tmp_path / "base" / "people" / "ana-ferreira.json").write_text(json.dumps(ana))
+    hijack = {**ana, "contact": "attacker@evil.example", "ids": {"github": "attacker"}}
+    (tmp_path / "pr" / "people" / "ana-ferreira.json").write_text(json.dumps(hijack))
+    r = subprocess.run([sys.executable, "-c", script], cwd=tmp_path, env={**__import__("os").environ, "PR_AUTHOR": "attacker", "PYTHONPATH": str(Path("src").resolve())}, capture_output=True, text=True)
+    assert r.returncode != 0 and "belongs to someone else" in (r.stdout + r.stderr)
+    # the owner may update her own file
+    (tmp_path / "pr" / "people" / "ana-ferreira.json").write_text(json.dumps({**ana, "contact": "ana@new.example"}))
+    r = subprocess.run([sys.executable, "-c", script], cwd=tmp_path, env={**__import__("os").environ, "PR_AUTHOR": "AnaFerreira", "PYTHONPATH": str(Path("src").resolve())}, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr

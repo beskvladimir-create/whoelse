@@ -44,6 +44,19 @@ _EMAIL = re.compile(r"^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,2
 _CLEAN = re.compile(r"[\x00-\x1f\x7f]")
 
 
+def _clean_text(v: str) -> str:
+    """Drop control and invisible formatting characters (RTL override, zero-width, bidi isolates);
+    collapse whitespace. What is left is what a human would read."""
+    import unicodedata
+    out = []
+    for ch in v:
+        cat = unicodedata.category(ch)
+        if cat in ("Cc", "Cf", "Co", "Cn"):
+            continue
+        out.append(" " if cat == "Zs" or ch in "\t\n\r" else ch)
+    return re.sub(r"\s+", " ", "".join(out)).strip()
+
+
 def registry_repo() -> str:
     return os.environ.get("WHOELSE_REGISTRY", DEFAULT_REGISTRY)
 
@@ -65,7 +78,7 @@ class Want(BaseModel):
     @field_validator("topic")
     @classmethod
     def _clean_topic(cls, v: str) -> str:
-        v = _CLEAN.sub("", v).strip()
+        v = _clean_text(v)
         if len(v) < 3:
             raise ValueError("topic too short")
         return v
@@ -119,14 +132,14 @@ class Request(BaseModel):
     languages: list[str] = Field(default_factory=lambda: ["en"], max_length=10)
     published: str = ""
     expires: str = ""
-    spec: str = ""
+    spec: str = Field(default="", max_length=200)
 
     @field_validator("name")
     @classmethod
     def _one_line(cls, v: str) -> str:
-        v = _CLEAN.sub("", v).strip()
-        if len(v.split()) < 2:
-            raise ValueError("name must be a full name")
+        v = _clean_text(v)
+        if len(v.split()) < 2 or "<" in v or ">" in v or "@" in v:
+            raise ValueError("name must be a plain full name")
         return v
 
     @field_validator("contact")
@@ -146,7 +159,7 @@ class Request(BaseModel):
         for x in v:
             if not isinstance(x, str):
                 raise ValueError("strings only")
-            x = _CLEAN.sub("", x).strip()[:60]
+            x = _clean_text(x)[:60]
             if x:
                 out.append(x)
         return out
@@ -269,7 +282,7 @@ async def list_requests() -> list[Request]:
         )
     except SourceError as e:
         raise SourceError(f"registry {repo} unreadable: {e}")
-    if not tree:
+    if not isinstance(tree, dict):
         return []
     entries = [
         t for t in tree.get("tree", [])
@@ -278,9 +291,15 @@ async def list_requests() -> list[Request]:
     out: list[Request] = []
     for t in entries:
         path = t["path"]
-        ref = t.get("sha") or branch
+        sha = t.get("sha")
         try:
-            raw = await http.get_json(RAW.format(repo=repo, ref=ref, path=path), fixture_name=f"network_{Path(path).stem}")
+            if sha:
+                blob = await http.get_json(f"{API}/repos/{repo}/git/blobs/{sha}", headers=gh._headers(),
+                                           fixture_name=f"network_{Path(path).stem}")
+                raw = _decode_blob(blob)
+            else:
+                raw = await http.get_json(RAW.format(repo=repo, ref=branch, path=path),
+                                          fixture_name=f"network_{Path(path).stem}", cache_hours=0)
         except SourceError:
             continue
         req = parse_request(raw)
@@ -289,12 +308,25 @@ async def list_requests() -> list[Request]:
     return out
 
 
+def _decode_blob(blob: Any) -> Any:
+    """A git blob object ({content: base64, encoding: "base64"}) or, in fixtures, the JSON itself."""
+    if isinstance(blob, dict) and blob.get("encoding") == "base64" and isinstance(blob.get("content"), str):
+        import base64
+        try:
+            return json.loads(base64.b64decode(blob["content"]).decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            return None
+    return blob
+
+
 # ---------- verification before anyone is named, invited or emailed
 
 async def verified(req: Request) -> tuple[bool, str]:
-    """A request may name, invite and email the person only if the identity it claims checks out
-    against something the person controls. The registry CI ties ids.github to the PR author; here
-    we tie the GitHub profile's display name to the request name."""
+    """What this establishes, and no more: the file belongs to the GitHub account in ids.github
+    (the registry CI ties it to the PR author) and that account's display name is the name in the
+    file. It does NOT prove that account is the researcher of that name: anyone can set a display
+    name. That is why the watcher never publishes a stranger's name: the repository is created
+    private, the account is invited, and only after they accept ("in") does anything go public."""
     login = req.ids.github
     if not login:
         return False, "no github login in request"
@@ -321,9 +353,12 @@ async def verified(req: Request) -> tuple[bool, str]:
 
 # ---------- matching requests against each other
 
+from .profile import STOP_KEYWORDS as _TOOLING
+
 GENERIC = {"large language models", "deep learning", "machine learning", "artificial intelligence", "nlp", "benchmark",
            "dataset", "language", "models", "model", "data", "systems", "system", "learning", "search", "enterprise",
-           "analysis", "ai", "llm", "llms"}
+           "analysis", "ai", "llm", "llms", "neural networks", "transformers", "python", "pytorch", "tensorflow",
+           "jax", "huggingface", "open source", "research", "paper", "code"} | set(_TOOLING)
 _TOPIC_STOP = {"data", "with", "from", "using", "based", "model", "models", "closed", "open", "language", "enterprise",
                "systems", "system", "learning", "search", "analysis", "study", "approach", "methods", "method", "the", "and", "for"}
 
@@ -446,7 +481,7 @@ async def publish_via_pr(req: dict[str, Any]) -> dict[str, Any]:
         if r.status_code not in (200, 201):
             raise SourceError(f"commit failed: HTTP {r.status_code} {r.text[:160]}")
         head = branch if me == owner else f"{me}:{branch}"
-        open_prs = await client.get(f"{API}/repos/{repo}/pulls", headers=h, params={"head": head, "state": "open"})
+        open_prs = await client.get(f"{API}/repos/{repo}/pulls", headers=h, params={"head": f"{me}:{branch}", "state": "open"})
         if open_prs.status_code == 200 and open_prs.json():
             return {"pr": open_prs.json()[0].get("html_url"), "path": path, "updated": True}
         r = await client.post(

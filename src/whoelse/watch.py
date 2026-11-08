@@ -129,9 +129,14 @@ def _i_create(mine: Request, other: Request) -> bool:
 async def _handle_pair(mine: Request, m: dict[str, Any], state: dict[str, dict[str, Any]], *, dry_run: bool) -> dict[str, Any]:
     o: Request = m["request"]
     pair = "|".join(sorted([mine.name, o.name]))
-    st = state.get(pair, {})
+    st = state.get(pair)
+    if not isinstance(st, dict):
+        st = {}
     result: dict[str, Any] = {"pair": pair, "shared": m["shared"]}
-    if st.get("done"):
+    if st.get("done") or (st.get("told_them") and st.get("repo")):
+        if not st.get("done"):
+            st["done"] = True
+            state[pair] = st
         return {**result, "status": "done", "repo": st.get("repo")}
     if not m["auto_start"]:
         return {**result, "status": "report_only", "note": "no wanted format in common; nothing started"}
@@ -142,7 +147,8 @@ async def _handle_pair(mine: Request, m: dict[str, Any], state: dict[str, dict[s
 
     fmt = m["common_formats"][0]
     topic = mine.wants[0].topic
-    expected = repo_name(mine.name, o.name, topic)
+    key = m["shared"][0]  # the matched keyword: identical on both sides, unlike either topic text
+    expected = repo_name(mine.name, o.name, key)
 
     if not _i_create(mine, o):
         # Waiting side. Look for the creator's repository; after WAIT_DAYS take over.
@@ -150,15 +156,21 @@ async def _handle_pair(mine: Request, m: dict[str, Any], state: dict[str, dict[s
         if creator_login:
             url = await _repo_exists(f"{creator_login}/{expected}")
             if url:
-                state[pair] = {"done": True, "role": "joined", "repo": url, "at": date.today().isoformat()}
                 if not dry_run:
+                    state[pair] = {"done": True, "role": "joined", "repo": url, "at": date.today().isoformat()}
                     notify(f"whoelse: {o.name} started joint work with you",
                            f"{o.name} created the repository for your joint {fmt.replace('_', ' ')} on {topic}:\n\n{url}\n\n"
                            f"Open an issue titled \"in\" there to confirm you are in.", mine.contact)
                 return {**result, "status": "joined", "repo": url}
         since = st.get("waiting_since") or date.today().isoformat()
-        state[pair] = {"waiting_since": since, "role": "wait"}
-        days = (date.today() - datetime.strptime(since, "%Y-%m-%d").date()).days
+        try:
+            since_d = datetime.strptime(str(since), "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            since_d = date.today()
+            since = since_d.isoformat()
+        if not dry_run:
+            state[pair] = {"waiting_since": since, "role": "wait"}
+        days = (date.today() - since_d).days
         if days < WAIT_DAYS:
             return {**result, "status": "waiting", "note": f"{o.name} creates the repository; checking again (day {days}/{WAIT_DAYS})"}
         result["note"] = f"{o.name} did not create the repository in {WAIT_DAYS} days; taking over"
@@ -170,7 +182,7 @@ async def _handle_pair(mine: Request, m: dict[str, Any], state: dict[str, dict[s
     mine_prof = load_profile(mine.name)
     if not mine_prof:
         return {**result, "status": "error", "note": "your profile is missing; run load_profile again"}
-    files = build_workspace(mine_prof, cand, fmt, topic=topic)
+    files = build_workspace(mine_prof, cand, fmt, topic=topic, key=key)
     root = write_local(files)
     result.update({"format": fmt, "local": str(root), "role": "create"})
     if dry_run:
@@ -179,7 +191,9 @@ async def _handle_pair(mine: Request, m: dict[str, Any], state: dict[str, dict[s
     repo_url = st.get("repo")
     if not repo_url:
         try:
-            created = await create_repo(files, invite=o.ids.github)
+            # Private until the stranger says "in": their name must not appear in public on the
+            # strength of a registry file. They can read and push as a collaborator from day one.
+            created = await create_repo(files, private=True, invite=o.ids.github)
             repo_url = created["repo"]
             result["invited"] = created.get("invited")
         except SourceError as e:
@@ -220,8 +234,9 @@ async def _handle_pair(mine: Request, m: dict[str, Any], state: dict[str, dict[s
     if online and not st.get("told_them"):
         body2 = (f"{mine.name} works on the same problem as you ({topic}) and has started a joint "
                  f"{fmt.replace('_', ' ')} with your name on it:\n\n{repo_url}\n\n"
-                 f"Section 1 is drafted from both papers where they exist; the plan is 14 days. To join, open an issue titled \"in\". "
-                 f"To decline, ignore this; the work will be finished alone with a citation to yours.\n")
+                 f"Section 1 is drafted from both papers where they exist; the plan is 14 days. The repository is private "
+                 f"to the two of us until you say so. To join, accept the invitation and open an issue titled \"in\". "
+                 f"To decline, ignore this; the work will be finished alone, made public without your name, with a citation to yours.\n")
         try:
             result["notified_them"] = notify(f"{mine.name} started joint work with you: {fmt.replace('_', ' ')}", body2, o.contact)
             state[pair] = {**state.get(pair, {}), "told_them": True, "repo": repo_url, "done": True, "at": date.today().isoformat()}

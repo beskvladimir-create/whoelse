@@ -51,12 +51,14 @@ notification when the repository is created and you are invited).
 proposed. Requests that share an id with yours are skipped. Complementary assets score higher:
 your code against their data, their paper against your system.
 
-**5. Nobody is named, invited or emailed on the strength of a file.** A registry file is data
-written by a stranger. It must fit a strict schema; the registry's CI merges it only if `ids.github`
-is the login that opened the pull request; and the watcher acts on it only after checking that
-that GitHub profile's display name is the name in the file (and that an ORCID, if given, does not
-contradict the contact). An impostor file is dropped, not acted on. A repository that already
-exists is never overwritten.
+**5. Nobody's name goes public on the strength of a file.** A registry file is data written by a
+stranger. It must fit a strict schema; the registry's CI merges it only if `ids.github` is the
+login that opened the pull request and the file is not someone else's; the watcher acts on it only
+if that GitHub profile's display name is the name in the file. That proves the file belongs to that
+account, not that the account is the researcher it names, so the joint repository is created
+**private**, the account is invited, and it goes public only after they accept and say "in". If
+they never do, you finish alone and publish without their name, citing their work. A repository
+that already exists is never overwritten.
 
 ## What you get
 

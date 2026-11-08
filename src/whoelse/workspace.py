@@ -38,12 +38,17 @@ def _ascii_slug(text: str, limit: int) -> str:
     return t[:limit].strip("-.") or "x"
 
 
-def repo_name(name_a: str, name_b: str, topic: str) -> str:
-    """Deterministic for a pair+topic, so both sides and later passes agree on it; GitHub-safe."""
-    a = _ascii_slug(name_a.split()[-1] if name_a.split() else name_a, 20)
-    b = _ascii_slug(name_b.split()[-1] if name_b.split() else name_b, 20)
+def repo_name(name_a: str, name_b: str, key: str) -> str:
+    """Deterministic for a PAIR and a shared key (the matched keyword, not either side's free-text
+    topic), so both watchers compute the same name. A short hash of the full names makes two pairs
+    with the same surnames distinct. GitHub-safe ASCII."""
+    import hashlib
+    from .profile import fold
+    a = _ascii_slug(name_a.split()[-1] if name_a.split() else name_a, 16)
+    b = _ascii_slug(name_b.split()[-1] if name_b.split() else name_b, 16)
     first, second = sorted([a, b])
-    return f"{first}-{second}-{_ascii_slug(topic, 40)}"[:90]
+    h = hashlib.sha1("|".join(sorted([fold(name_a), fold(name_b)]) + [fold(key)]).encode()).hexdigest()[:6]
+    return f"{first}-{second}-{_ascii_slug(key, 30)}-{h}"[:80]
 
 
 def _yaml(s: str) -> str:
@@ -84,7 +89,7 @@ def _cite(a: Asset, fallback_author: str = "") -> str:
     return f"{who} ({y}). {a.title}. {a.url}".strip()
 
 
-def build_workspace(me: Profile, c: Candidate, format_id: str, *, days: int = 14, topic: str | None = None) -> dict[str, str]:
+def build_workspace(me: Profile, c: Candidate, format_id: str, *, days: int = 14, topic: str | None = None, key: str | None = None) -> dict[str, str]:
     """Returns {relative_path: content}. `topic` is the human-written subject when there is one
     (from a request); otherwise the sharpest shared keyword."""
     p = c.person
@@ -95,7 +100,7 @@ def build_workspace(me: Profile, c: Candidate, format_id: str, *, days: int = 14
         raise ValueError(f"unknown format_id {format_id!r}")
     mine, theirs = _papers(me.assets, topic=topic, keywords=kw), _papers(p.assets, topic=topic, keywords=kw)
     my_code, their_code = _code(me.assets, kw[0] if kw else topic), _code(p.assets, kw[0] if kw else topic)
-    name = repo_name(me.name, p.name, topic)
+    name = repo_name(me.name, p.name, key or (kw[:1] or [topic])[0])
     deadline = date.today() + timedelta(days=days)
     files: dict[str, str] = {}
     fmt_label = fmt[1]
@@ -310,7 +315,16 @@ async def create_repo(files: dict[str, str], *, private: bool = False, invite: s
             raise SourceError("token does not resolve to a user")
         full = f"{me}/{name}"
         if (await client.get(f"{API}/repos/{full}", headers=h)).status_code == 200:
-            # Already there: someone may have pushed. Never overwrite.
+            # Already there: someone may have pushed. Never overwrite. But make sure it is THIS pair's.
+            marker = await client.get(f"{API}/repos/{full}/contents/.whoelse.json", headers=h)
+            if marker.status_code == 200:
+                try:
+                    sides = set(json.loads(base64.b64decode(marker.json()["content"]).decode())["sides"])
+                except (KeyError, ValueError):
+                    sides = set()
+                want = set(json.loads(files[".whoelse.json"])["sides"])
+                if sides and sides != want:
+                    raise SourceError(f"repository {full} exists but belongs to another pair {sorted(sides)}")
             return {"repo": f"https://github.com/{full}", "full_name": full, "existing": True}
         r = await client.post(f"{API}/user/repos", headers=h, json={
             "name": name, "private": private, "auto_init": False,

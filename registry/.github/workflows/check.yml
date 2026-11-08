@@ -1,38 +1,65 @@
 name: check request
+# pull_request_target runs THIS workflow from the base branch, so a PR cannot replace the check.
+# The PR's files are checked out into ./pr and only read as JSON; nothing from ./pr is executed.
 on:
-  pull_request:
+  pull_request_target:
     paths: ["people/**"]
+permissions:
+  contents: read
+  pull-requests: read
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+      - uses: actions/checkout@v4            # base: the trusted workflow and the current files
+        with: { path: base }
+      - uses: actions/checkout@v4            # head: the PR's files, read only
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          path: pr
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install git+https://github.com/beskvladimir-create/whoelse
-      - name: one file, yours, valid
+      - name: one file, yours, valid, and not someone else's
         env:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           python - <<'PY'
           import json, os, subprocess, sys
           from whoelse.network import parse_request
           from whoelse.profile import slug
-          changed = subprocess.check_output(["git", "diff", "--name-only", os.environ["BASE"], "HEAD"], text=True).split()
-          files = [f for f in changed if f.startswith("people/")]
-          if len(files) != 1:
-              sys.exit(f"exactly one file under people/ per pull request, got {files}")
-          path = files[0]
-          if not os.path.exists(path):
-              sys.exit("deleting your file is fine, but do it in a separate PR titled 'remove'")  # keep simple
-          req = parse_request(json.load(open(path)))
+          author = os.environ["PR_AUTHOR"].lower()
+          # Compare trees directly: everything under people/ that differs between base and pr.
+          base_files = {f for f in os.listdir("base/people")} if os.path.isdir("base/people") else set()
+          pr_files = {f for f in os.listdir("pr/people")} if os.path.isdir("pr/people") else set()
+          changed = []
+          for f in sorted(base_files | pr_files):
+              b = open(f"base/people/{f}", "rb").read() if f in base_files else None
+              p = open(f"pr/people/{f}", "rb").read() if f in pr_files else None
+              if b != p:
+                  changed.append((f, b, p))
+          if len(changed) != 1:
+              sys.exit(f"exactly one file under people/ per pull request, got {[c[0] for c in changed]}")
+          fname, old, new = changed[0]
+          if old is not None:
+              try:
+                  old_req = parse_request(json.loads(old))
+              except ValueError:
+                  old_req = None
+              if not old_req or (old_req.ids.github or "").lower() != author:
+                  sys.exit(f"people/{fname} belongs to someone else; you may only change your own file")
+          if new is None:
+              print("ok: removing your own file"); sys.exit(0)
+          try:
+              req = parse_request(json.loads(new))
+          except ValueError:
+              req = None
           if not req:
               sys.exit("file does not satisfy the whoelse request schema")
-          if path != f"people/{slug(req.name)}.json":
+          if fname != f"{slug(req.name)}.json":
               sys.exit(f"file must be people/{slug(req.name)}.json")
-          if (req.ids.github or "").lower() != os.environ["PR_AUTHOR"].lower():
-              sys.exit(f"ids.github must be the pull request author ({os.environ['PR_AUTHOR']})")
+          if (req.ids.github or "").lower() != author:
+              sys.exit(f"ids.github must be the pull request author ({author})")
           print("ok:", req.name, req.wants[0].topic)
           PY
