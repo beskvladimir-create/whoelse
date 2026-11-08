@@ -78,3 +78,15 @@ code, not advice: 3–15 living repositories per proposal, 10 issues a day, 20 s
 no repository is asked twice, archived and issues-disabled repositories skipped, the plan inline or
 at a URL the user owns (no placeholder links in anything sent), opened only on the user's explicit
 yes from the user's own account. 74 tests.
+
+Independent review of the layer (same day) found the engine confidently wrong on ordinary inputs:
+product-name mentions counted as overlap ("a Claude Code plugin to back up sessions" → claude-mem,
+114k stars, "already won"); core query words picked by length ("closed-contour" over "nl2sql" → "this
+is new" for the most crowded field on GitHub); capped, star-sorted counts presented as medians; a
+failed search reported as novelty; `max_stars` hiding the leader. On the merge side: no cluster
+bound, a placeholder link in every public issue, the user's own and 3k-star repositories asked,
+approval not bound to the texts shown. All fixed; the fixes are in the tests. Three rules came out
+of it: relevance is measured on job words only, with all of them required for a short idea; a
+cluster is reported with its search total and "at least" when capped; an empty cluster next to a
+related field says "the parts exist", never "new". Claude Code plugin added (`plugin/`) so the check
+runs before the agent writes the first line.
