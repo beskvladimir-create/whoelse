@@ -390,16 +390,23 @@ async def find_duplicates(idea: str, months: int = 24, max_stars: int | None = N
 
 
 @mcp.tool()
-async def propose_merge(idea: str, months: int = 24, max_stars: int | None = None, open_issues: bool = False) -> dict[str, Any]:
+async def propose_merge(idea: str, months: int = 24, max_stars: int | None = None, open_issues: bool = False,
+                        plan_url: str | None = None) -> dict[str, Any]:
     """For a cluster of near-identical small repositories: a merge plan (base repo, what each one
     brings, every author a maintainer, a deadline) and the text of the issue each author would
     receive in their own repository. Nothing is opened unless open_issues=true, and that needs the
     user's explicit yes after reading the texts: the issues are public and go out under the user's
-    GitHub account."""
+    GitHub account. Limits (GitHub acceptable use): 3 to 15 repositories, at most 10 issues a day,
+    never twice to one repository, never to archived repositories or ones with issues disabled.
+    plan_url: where the user put plan_md (their repo or gist); without it the plan goes inline."""
     d = await dup.find_duplicates(idea, months=months, max_stars=max_stars)
-    if d["count"] < 2:
-        return {"verdict": d["verdict"], "cluster": d["cluster"], "note": "fewer than two repositories; nothing to merge"}
-    plan = dup.merge_plan(d)
+    if d["count"] < dup.MIN_CLUSTER_FOR_MERGE:
+        return {"verdict": d["verdict"], "cluster": d["cluster"],
+                "note": f"fewer than {dup.MIN_CLUSTER_FOR_MERGE} repositories; contribute to the leader instead of merging"}
+    try:
+        plan = dup.merge_plan(d, plan_url=plan_url)
+    except ValueError as e:
+        raise ToolError(str(e))
     out: dict[str, Any] = {"duplicates": {k: d[k] for k in ("count", "total_stars", "median_stars", "leader", "features_nobody_has", "verdict")}, "plan": plan}
     if open_issues:
         results = []
@@ -411,7 +418,8 @@ async def propose_merge(idea: str, months: int = 24, max_stars: int | None = Non
                 results.append({**it, "error": str(e)})
         out["opened"] = results
     else:
-        out["next"] = "Show the user the plan and the issue texts. If they say yes, call again with open_issues=true."
+        out["next"] = ("Show the user the plan and every issue text. If they say yes: put plan_md somewhere public "
+                       "(their repository or a gist), then call again with open_issues=true and plan_url.")
     return out
 
 

@@ -154,7 +154,7 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
         "cluster": [
             {"repo": r.title, "url": r.url, "stars": r.stats.get("stars", 0), "language": next((k for k in r.keywords if k in ("python", "go", "rust", "typescript", "javascript", "shell", "swift", "c#", "java")), ""),
              "pushed": r.date.isoformat() if r.date else None, "summary": r.summary[:140], "features": matrix[r.title], "only_here": unique[r.title],
-             "owner": r.extra.get("owner", "")}
+             "owner": r.extra.get("owner", ""), "archived": r.extra.get("archived") == "yes", "issues_disabled": r.extra.get("has_issues") == "no"}
             for r in cluster
         ],
         "features_anyone_has": [f for f, _ in all_features.most_common()],
@@ -180,13 +180,24 @@ def _verdict(idea: str, cluster: list[Asset], stars: list[int], leader: Asset | 
 
 # ---------- the merge proposal
 
-def merge_plan(dup: dict[str, Any], *, days: int = 21) -> dict[str, Any]:
+MAX_CLUSTER_FOR_MERGE = 15   # more than this is a bulk mailing, not a proposal; the user narrows the idea
+MIN_CLUSTER_FOR_MERGE = 3
+MAX_ISSUES_PER_DAY = 10      # GitHub's acceptable use forbids excessive bulk content in issues
+
+
+def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = None) -> dict[str, Any]:
     """From a duplicates cluster: which repo is the base (most active, most stars), what each other
     repo contributes (its only_here features), who the authors are, and the text of the issue each
-    author receives. Nothing is sent by this function."""
-    cluster = dup["cluster"]
-    if len(cluster) < 2:
-        raise ValueError("a merge needs at least two repositories")
+    author receives. Nothing is sent by this function. `plan_url` is where the plan will be readable
+    (the user's repository or gist); without it the issue text carries the whole plan inline."""
+    cluster = [r for r in dup["cluster"] if not r.get("archived")]
+    if len(cluster) < MIN_CLUSTER_FOR_MERGE:
+        raise ValueError(f"a merge proposal needs at least {MIN_CLUSTER_FOR_MERGE} living repositories (found {len(cluster)})")
+    if len(cluster) > MAX_CLUSTER_FOR_MERGE:
+        # keep the three with most stars and the most recently active of the rest
+        top = sorted(cluster, key=lambda r: -r["stars"])[:3]
+        rest = sorted((r for r in cluster if r not in top), key=lambda r: r["pushed"] or "", reverse=True)
+        cluster = top + rest[: MAX_CLUSTER_FOR_MERGE - 3]
     # The base is the leader if it is alive (its stars and users carry over); else the most active.
     cutoff = (date.today() - timedelta(days=90)).isoformat()
     alive = [r for r in cluster if (r["pushed"] or "") >= cutoff]
@@ -209,16 +220,24 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21) -> dict[str, Any]:
                 "**How to say yes:** reply \"in\" on the issue in your repository, or open an issue in the merged repository. How to say no: ignore it.", ""]
 
     issue_title = f"{len(cluster)} of us built the same thing. Merge?"
+    stars_phrase = (f"`{base['repo']}` has {base['stars']} stars, the rest a median of {dup['median_stars']}"
+                    if base["stars"] >= 50 else f"the median has {dup['median_stars']} stars")
+    plan_ref = f"Plan: {plan_url}" if plan_url else "Plan (full text below)."
     issues = []
     for r in cluster:
+        if r.get("issues_disabled"):
+            continue
         others_list = ", ".join(f"[{o['repo']}]({o['url']})" for o in cluster if o["repo"] != r["repo"])[:1500]
+        yours = ", ".join(r["only_here"]) or "a working implementation"
         body = (f"Hi {r['owner']},\n\n"
                 f"`{r['repo']}` is one of {len(cluster)} repositories that solve \"{dup['idea']}\" ({others_list}). "
-                f"Each has a few stars; none has everything. Yours has what the others don't: **{', '.join(r['only_here']) or 'a working implementation'}**.\n\n"
+                f"{stars_phrase}; none has everything. Yours has what the others don't: **{yours}**.\n\n"
                 f"Proposal: one repository with all of us as maintainers, `{base['repo']}` as the base, your piece ported with your authorship, "
-                f"first release by {deadline}. Plan: (link to the merged repository's PLAN.md)\n\n"
+                f"first release by {deadline}. {plan_ref}\n\n"
                 f"Nothing is deleted. Your repository stays; you decide whether to point it at the merged one.\n\n"
                 f"In? Reply \"in\". Not interested? Ignore this, no follow-up.\n")
+        if not plan_url:
+            body += "\n---\n\n" + "\n".join(plan_md)
         issues.append({"repo": r["repo"], "owner": r["owner"], "title": issue_title, "body": body})
 
     return {
@@ -229,28 +248,74 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21) -> dict[str, Any]:
         "deadline": deadline,
         "plan_md": "\n".join(plan_md),
         "issues": issues,
+        "truncated_to": len(cluster) if len(dup["cluster"]) > len(cluster) else None,
         "rules": [
             "Open one issue per repository, from the user's own GitHub account, each author sees the same plan.",
             "No issue is opened without the user's explicit yes; the texts above are for them to read first.",
+            f"At most {MAX_ISSUES_PER_DAY} issues per day, 20 seconds apart, never to archived repositories or ones with issues disabled, never twice to the same repository.",
             "The merged repository is created only after at least two authors said \"in\".",
         ],
     }
 
 
+def _ledger_path():
+    return settings().home / "issues-opened.json"
+
+
+def _ledger() -> dict[str, Any]:
+    import json
+    p = _ledger_path()
+    try:
+        return json.loads(p.read_text()) if p.exists() else {}
+    except ValueError:
+        return {}
+
+
+def _ledger_save(d: dict[str, Any]) -> None:
+    import json
+    _ledger_path().parent.mkdir(parents=True, exist_ok=True)
+    _ledger_path().write_text(json.dumps(d, indent=2))
+
+
 async def open_issue(owner: str, repo: str, title: str, body: str) -> dict[str, Any]:
-    """Open an issue with the user's token. Only called after the user said yes."""
+    """Open an issue with the user's token. Only called after the user said yes. Keeps a local
+    ledger so the same repository is never asked twice and the daily cap holds across runs."""
+    import asyncio
     import httpx
     if settings().fixtures_dir:
         raise SourceError("offline mode; issue not opened")
     if not settings().github_token:
         raise SourceError("no GITHUB_TOKEN; issue not opened")
+    led = _ledger()
+    key = f"{owner}/{repo}"
+    if key in led:
+        raise SourceError(f"already asked {key} on {led[key]['date']}: {led[key]['issue']}")
+    today = date.today().isoformat()
+    if sum(1 for v in led.values() if v.get("date") == today) >= MAX_ISSUES_PER_DAY:
+        raise SourceError(f"daily cap of {MAX_ISSUES_PER_DAY} issues reached; continue tomorrow")
     client = await http._get_client()
+    h = gh._headers()
     try:
-        r = await client.post(f"{API}/repos/{owner}/{repo}/issues", headers=gh._headers(), json={"title": title, "body": body})
+        meta = await client.get(f"{API}/repos/{owner}/{repo}", headers=h)
+        if meta.status_code == 200:
+            m = meta.json()
+            if m.get("archived"):
+                raise SourceError(f"{key} is archived")
+            if m.get("has_issues") is False:
+                raise SourceError(f"{key} has issues disabled")
+        # never duplicate an open issue with the same title (ours or anyone's)
+        existing = await client.get(f"{API}/repos/{owner}/{repo}/issues", headers=h, params={"state": "open", "per_page": 50})
+        if existing.status_code == 200 and any((i.get("title") or "") == title for i in existing.json() if isinstance(i, dict)):
+            raise SourceError(f"{key} already has an open issue with this title")
+        r = await client.post(f"{API}/repos/{owner}/{repo}/issues", headers=h, json={"title": title, "body": body})
     except httpx.HTTPError as e:
         raise SourceError(f"github: {e}")
-    if r.status_code == 410:
-        raise SourceError(f"{owner}/{repo} has issues disabled")
+    if r.status_code in (403, 404, 410):
+        raise SourceError(f"{key}: cannot open issues there (HTTP {r.status_code})")
     if r.status_code != 201:
         raise SourceError(f"issue failed: HTTP {r.status_code} {r.text[:160]}")
-    return {"issue": r.json().get("html_url")}
+    url = r.json().get("html_url")
+    led[key] = {"date": today, "issue": url}
+    _ledger_save(led)
+    await asyncio.sleep(20)  # pace: this is a conversation starter, not a mailing
+    return {"issue": url}

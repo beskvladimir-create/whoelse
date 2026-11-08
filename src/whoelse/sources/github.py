@@ -41,7 +41,8 @@ def repo_to_asset(r: dict[str, Any]) -> Asset:
         keywords=[t.lower() for t in (r.get("topics") or [])] + ([str(r.get("language")).lower()] if r.get("language") else []),
         stats={"stars": int(r.get("stargazers_count") or 0), "forks": int(r.get("forks_count") or 0)},
         coauthors=[((r.get("owner") or {}).get("login") or "")],
-        extra={"owner": (r.get("owner") or {}).get("login") or "", "license": ((r.get("license") or {}).get("spdx_id") or "")},
+        extra={"owner": (r.get("owner") or {}).get("login") or "", "license": ((r.get("license") or {}).get("spdx_id") or ""),
+               "archived": "yes" if r.get("archived") else "", "has_issues": "no" if r.get("has_issues") is False else ""},
     )
 
 
