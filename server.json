@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.beskvladimir-create/whoelse",
+  "title": "whoelse",
+  "description": "Don't build it alone: what exists for the idea, who won, what nobody has, a merge plan for the duplicates, and the people on the same problem.",
+  "repository": {
+    "url": "https://github.com/beskvladimir-create/whoelse",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "whoelse",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        { "name": "GITHUB_TOKEN", "description": "Optional. Raises GitHub search limits; public_repo scope needed for publish_request, start_joint_work and the watcher.", "isRequired": false, "isSecret": true },
+        { "name": "WHOELSE_OPENALEX_KEY", "description": "Optional. Free OpenAlex API key; without it you share a small per-IP daily budget.", "isRequired": false, "isSecret": true },
+        { "name": "WHOELSE_MAILTO", "description": "Optional. Your email for OpenAlex's polite pool; sent nowhere else.", "isRequired": false }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+name: release
+# One tag publishes everywhere: PyPI (trusted publishing, no token) and the official MCP Registry (GitHub OIDC).
+# One-time setup on pypi.org: Your projects -> Publishing -> add a pending publisher for project "whoelse",
+# owner beskvladimir-create, repository whoelse, workflow release.yml, environment pypi.
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build && python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+  registry:
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+      - name: Version from the tag
+        run: |
+          V=${GITHUB_REF#refs/tags/v}
+          jq --arg v "$V" '.version = $v | .packages[0].version = $v' server.json > s.tmp && mv s.tmp server.json
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher publish

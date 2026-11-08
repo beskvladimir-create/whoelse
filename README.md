@@ -1,5 +1,7 @@
 # whoelse
 
+<!-- mcp-name: io.github.beskvladimir-create/whoelse -->
+
 **Don't build it alone.**
 
 Ask an agent to build something and it will, for the 21st time. Somewhere, twenty people already
@@ -231,7 +233,7 @@ Once you've decided someone is one of yours (`add_peer`), whoelse watches what t
 ## Install
 
 ```bash
-pip install git+https://github.com/beskvladimir-create/whoelse      # PyPI release to follow
+pip install whoelse            # or: pip install git+https://github.com/beskvladimir-create/whoelse
 ```
 
 Claude Code: `claude mcp add whoelse -- whoelse`
