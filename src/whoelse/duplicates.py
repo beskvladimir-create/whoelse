@@ -131,6 +131,59 @@ def _tokens(text: str, *, stem: bool = True) -> list[str]:
     return [(_stem(t) if stem else t) for t in toks if t not in _STOP and len(t) > 1]
 
 
+def _job_groups(toks: list[str]) -> list[set[str]]:
+    """Job words as groups: a hyphenated word and its parts ("ai-generated", "ai", "generated") are
+    one word, matched once, so splitting never inflates the count."""
+    job = _job_tokens(toks)
+    groups: list[set[str]] = []
+    taken: set[str] = set()
+    for t in job:
+        if "-" in t:
+            g = {t} | {p for p in t.split("-") if p in job}
+            groups.append(g)
+            taken |= g
+    for t in job:
+        if t not in taken:
+            groups.append({t})
+    return groups
+
+
+# The verb of the idea. A repository that never says what it does with the thing is not a duplicate
+# of a tool that does one specific thing with it: a collection of notebooks is not a converter.
+_ACTIONS: dict[str, set[str]] = {
+    "convert": {"convert", "converter", "export", "exporter", "transform", "render", "renderer", "publish", "turn", "generate", "generator"},
+    "sync": {"sync", "share", "transfer", "migrate", "move", "replicate", "mirror", "backup", "restore", "sharing", "synchronization"},
+    "block": {"block", "blocker", "filter", "hide", "remove", "detect", "detector", "flag", "label", "guard"},
+    "summarize": {"summarize", "summarizer", "summary", "summaries", "digest", "tldr", "summarise", "summariser", "recap"},
+    "track": {"track", "tracker", "monitor", "meter", "usage", "dashboard", "analytics", "report", "cost", "spend"},
+    "parse": {"parse", "parser", "read", "reader", "decode", "decoder", "implementation", "library", "crate", "toolkit", "sdk"},
+    "generate": {"generate", "generator", "publish", "publisher", "build", "export", "render", "convert", "site", "website"},
+    "find": {"find", "finder", "discover", "discovery", "search", "match", "matching", "matchmaking", "recommend", "connect", "lookup"},
+    "anonymize": {"anonymize", "anonymizer", "anonymization", "redact", "redaction", "mask", "masking", "pseudonymize", "scrub", "protect", "guard", "detect"},
+    "backup": {"backup", "back-up", "snapshot", "archive", "export", "save", "restore", "vault"},
+    "check": {"check", "checker", "validate", "validator", "verify", "lint", "audit"},
+}
+_ACTION_FORMS = {}
+for _a, _ws in _ACTIONS.items():
+    for _w in _ws:
+        _ACTION_FORMS.setdefault(_w, set()).add(_a)
+    _ACTION_FORMS.setdefault(_a, set()).add(_a)
+    _ACTION_FORMS.setdefault(_a + "s", set()).add(_a)
+    _ACTION_FORMS.setdefault(_a + "es", set()).add(_a)
+    _ACTION_FORMS.setdefault(_a + "ing", set()).add(_a)
+    _ACTION_FORMS.setdefault(_a + "d", set()).add(_a)
+    _ACTION_FORMS.setdefault(_a + "ed", set()).add(_a)
+    _ACTION_FORMS.setdefault(_a + "r", set()).add(_a)
+    _ACTION_FORMS.setdefault(_a + "er", set()).add(_a)
+
+
+def _actions_in(text: str) -> set[str]:
+    out: set[str] = set()
+    for t in re.findall(r"[a-z]+", _normalise(text)):
+        out |= _ACTION_FORMS.get(t, set())
+    return out
+
+
 def _job_tokens(toks: list[str]) -> list[str]:
     """What the tool does, without the product it does it for. "code" after "claude" is part of the
     product name and is already folded into claude-code by _normalise."""
@@ -144,6 +197,8 @@ _GENERIC_WORDS = {"parsing", "parse", "parser", "tracking", "track", "tracker", 
                   "write", "writes", "read", "reads", "run", "runs", "runner", "export", "exports", "import", "imports",
                   "static", "site", "sites", "dashboard", "bot", "extension", "library", "framework", "service", "problem", "people",
                   "working", "research", "same", "across", "between", "before", "after", "sending", "send", "document", "documents"}
+# words that cannot make a repository "related" on their own, in stemmed and plain form
+_DULL = {_stem(w) for w in _COMMON | _GENERIC_WORDS | _TECH} | _COMMON | _GENERIC_WORDS | _TECH
 
 
 def _rarity(t: str) -> tuple[int, int]:
@@ -244,15 +299,20 @@ def _similarity(job: set[str], repo: Asset) -> tuple[float, int]:
     return sim, len(hit)
 
 
-def _similarity_hits(job: set[str], repo: Asset) -> tuple[float, set[str]]:
-    """Cosine-like overlap between the idea's job words and the repository's text, plus the number
-    of job words matched. Product names do not count: a repository is not a duplicate of "a Claude
-    Code session backup tool" for mentioning Claude Code."""
+def _similarity_hits(job: set[str], repo: Asset, groups: list[set[str]] | None = None) -> tuple[float, set[str]]:
+    """Cosine-like overlap between the idea's job words and the repository's text, plus the set of
+    job words matched. Product names do not count: a repository is not a duplicate of "a Claude
+    Code session backup tool" for mentioning Claude Code. With `groups`, a hyphenated word and its
+    parts count once."""
     raw = _bag(repo)
     bag = _expand(raw)
     if not bag or not job:
         return 0.0, set()
     hit = {t for t in job if t in bag or any(syn & bag for syn in _syns(t))}
+    if groups:
+        n_groups = len(groups)
+        n_hit = sum(1 for g in groups if g & hit)
+        return n_hit / math.sqrt(n_groups * len(raw)), {next(iter(g & hit)) for g in groups if g & hit}
     return len(hit) / math.sqrt(len(job) * len(raw)), hit
 
 
@@ -284,7 +344,9 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
     if not job:
         raise ValueError("the idea names a product but not a job; say what the tool does")
     # job words that must appear in a repository's text: all of them for a short idea, half for a long one
-    need = len(job) if len(job) <= 3 else max(2, math.ceil(len(job) / 2))
+    groups = _job_groups(toks)
+    actions = _actions_in(idea)
+    need = len(groups) if len(groups) <= 3 else max(2, math.ceil(len(groups) / 2))
     stale = (date.today() - timedelta(days=30 * months)).isoformat()
     found: dict[str, Asset] = {}
     errors: list[str] = []
@@ -303,12 +365,18 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
     broad = search_total > BROAD_SEARCH
     scored, excluded, related = [], [], []
     for r in repos:
-        sim, bag_hit = _similarity_hits(job, r)
+        sim, bag_hit = _similarity_hits(job, r, groups)
         matched = len(bag_hit)
         if products and not (products & _expand(_bag(r))):
             continue   # the idea is about a product; a repository that never mentions it is about something else
+        if actions and not (actions & _actions_in(r.title.split("/")[-1].replace("-", " ") + " " + r.summary + " " + " ".join(r.keywords))):
+            # the idea says what the tool does with the thing; a repository that never says so is about the thing, not the job
+            if matched >= 1:
+                sharp_hit = any(t not in _DULL for t in bag_hit)
+                related.append((matched + (1 if sharp_hit else 0), r, sharp_hit))
+            continue
         if matched >= 2 or (matched == 1 and any(t in bag_hit for t in job if t not in _COMMON)):
-            sharp_hit = any(t not in _COMMON and t not in _TECH and t not in _GENERIC_WORDS for t in bag_hit)
+            sharp_hit = any(t not in _DULL for t in bag_hit)
             related.append((matched + (1 if sharp_hit else 0), r, sharp_hit))
         if sim < SIM_THRESHOLD or matched < need:
             continue
@@ -356,7 +424,8 @@ async def find_duplicates(idea: str, *, months: int = 24, max_stars: int | None 
         "median_note": "median of the matches returned, which GitHub sorts by stars; the field's real median is not higher",
         "leader": {"repo": leader.title, "url": leader.url, "stars": leader.stats.get("stars", 0), "pushed": leader.date.isoformat() if leader.date else None} if leader else None,
         "related": {"count": len(related), "count_note": "among the fetched results (50 per query); search_total says how many the field has",
-                    "top": {"repo": top_related.title, "stars": top_related.stats.get("stars", 0), "url": top_related.url} if top_related else None,
+                    "top": {"repo": top_related.title, "stars": top_related.stats.get("stars", 0), "url": top_related.url} if top_related and not related_is_vague else None,
+                    "vague": related_is_vague,
                     "note": "repositories sharing part of the job with the idea, by their one-line text; the field, not the duplicates, and look-alikes are possible"},
         "excluded_by_max_stars": [{"repo": r.title, "stars": r.stats.get("stars", 0), "url": r.url} for r in sorted(excluded, key=lambda r: -r.stats.get("stars", 0))[:5]],
         "cluster": [

@@ -202,3 +202,17 @@ def test_inactive_repos_are_not_asked_and_name_never_empty():
     assert "inactive" in plan["skipped"]["u0/r0"]
     d = _dup([_row(f"u{i}/r{i}", 5) for i in range(3)]); d["idea"] = "!!! ???"
     assert dup.merge_plan(d)["name"] != "merged-"
+
+
+def test_hyphen_parts_count_once_and_actions_are_required():
+    from whoelse.models import Asset
+    from datetime import date
+    mk = lambda n, d_: Asset(kind="repo", title=n, url="", source="github", summary=d_, date=date.today(), stats={"stars": 1})  # noqa: E731
+    toks = dup._tokens("a Chrome extension that blocks AI-generated images")
+    groups = dup._job_groups(toks)
+    assert sum(1 for g in groups if "ai-generated" in g) == 1 and len([g for g in groups if g & {"ai", "generated", "ai-generated"}]) == 1
+    sim, hit = dup._similarity_hits(set(dup._job_tokens(toks)), mk("x/git-ai", "Track AI-generated code in your repos"), groups)
+    assert len(hit) == 1                      # ai-generated counted once, not three times
+    assert "block" in dup._actions_in("a Chrome extension that blocks AI-generated images")
+    assert not dup._actions_in("Track AI-generated code in your repos") & {"block"}
+    assert "convert" in dup._actions_in("converts notebooks") and "convert" in dup._actions_in("A notebook exporter")
