@@ -53,3 +53,28 @@ Vladimir's correction: finding people is not the product; two strangers ending u
 Two review rounds on this layer found and fixed: registry files are hostile input (strict schema; control and invisible characters stripped; names with markup rejected); impersonation by file (verification against the GitHub profile; CI requires ids.github == PR author AND that an existing file belongs to the author; workflow runs from base via pull_request_target); what verification cannot prove (that the account is the named researcher), answered by creating the repository private and publishing only after "in"; two watchers creating two repositories (one creator per pair by sorted name; repo name from the pair and the matched keyword, with a hash, never from either side's topic text); overwriting a collaborator's pushes (never write into an existing repo; check .whoelse.json sides); registry read from a 72-hour cache (tree uncached; files by blob sha through the git/blobs API, since raw.githubusercontent does not serve blob shas); SMTP sender forgery (no From → inbox only); state corruption and dry runs starting clocks. 65 tests, the registry CI script is executed in the test suite.
 
 Known limit, stated in README: display-name verification is weak by itself; privacy-until-"in" is the real guard.
+
+## 2026-11-08, before you build it
+
+Vladimir's observation: open source has twenty repositories for every idea, each with ten stars,
+each author alone and wanting the same thing: a response. And agents happily build the 21st.
+So: `find_duplicates` (GitHub search on the idea; keep what is actually the same thing by token
+similarity; order by stars; feature matrix from a fixed vocabulary of feature words, so repository
+descriptions can label but never speak; verdict first) and `propose_merge` (base = the living
+leader, pushed within 90 days with the most stars, so its stars and users carry over; what each
+repository brings is its `only_here` features; one issue per author in their own repository).
+
+Live check on "sync Claude Code sessions across machines": 233 repositories, leader
+tawanorg/claude-sync (320 stars, Go, R2 + end-to-end encryption), ~40 at 2–13 stars with disjoint
+backends (Drive, SSH, Syncthing, Tailscale, Obsidian, git vault, LAN). Early mistakes fixed: queries
+from stop-word-stripped phrases were too weak (now product names and distinctive tokens); cluster
+ordered by similarity put 2-star repos above the leader (now stars); base chosen by recency picked a
+fresh fork over the leader (now living leader); default `max_stars=200` excluded the leader (now
+none).
+
+GitHub's Acceptable Use Policies (read 2026-11-08) prohibit "automated excessive bulk activity",
+"unsolicited advertising or solicitation" and "excessive bulk content in issues". The limits are
+code, not advice: 3–15 living repositories per proposal, 10 issues a day, 20 s pacing, a ledger so
+no repository is asked twice, archived and issues-disabled repositories skipped, the plan inline or
+at a URL the user owns (no placeholder links in anything sent), opened only on the user's explicit
+yes from the user's own account. 74 tests.

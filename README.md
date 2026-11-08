@@ -47,6 +47,11 @@ author, in their own repository, where they already read. The issues go out only
 read them and said yes, from your GitHub account, all at once, so no author is asked to join
 someone else's project: all of them are asked to join one.
 
+GitHub's acceptable use forbids bulk unsolicited content, and so does common sense, so the limits
+are in the code: 3 to 15 living repositories per proposal, at most 10 issues a day, 20 seconds
+apart, never twice to the same repository (a local ledger remembers), never to an archived
+repository or one with issues turned off. One proposal is a conversation; forty is a mailing.
+
 ## How it connects strangers
 
 Finding people is the easy half. whoelse is built around the hard half: two people who have never
