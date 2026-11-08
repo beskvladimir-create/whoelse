@@ -129,22 +129,22 @@ Ask your agent:
  2. Lukas Galke (University of Southern Denmark): same topic: text classification; active 2026-01.                reach: email
 ```
 
-> Start a comparison note with Amine.
+> Start a comparison note with Ada Example (illustration; the names below are made up).
 
 ```
-Repository: github.com/ada/example-mhedhbi-text-to-sql
+Repository: github.com/you/you-example-text-to-sql
   paper/paper.md     outline; section 1 drafted from both abstracts; table with published numbers
   repro/run.py       both methods, same data, same metric; each side fills its half
   PLAN.md            14 days to a preprint
   CITATION.cff       both names
-Send this: three sentences, the link, one yes/no question. To: amine.mhedhbi@polymtl.ca (from his whoelse card)
+Send this: three sentences, the link, one yes/no question. To: ada@example.org (from her whoelse card)
 ```
 
 > Publish my request: a comparison note on text-to-SQL for closed enterprise data, by December.
 
 ```
-Your request is published. 2 people are waiting in the network; 1 wants what you want: Ana Ferreira
-(UFMG), text-to-sql, has a dataset you don't. Joint work can start now.
+Your request is published. 2 people are waiting in the network; 1 wants what you want: Ana Example
+(illustration), text-to-sql, has a dataset you don't. Joint work can start now.
 ```
 
 ## How it finds people
