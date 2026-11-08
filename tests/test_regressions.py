@@ -341,3 +341,23 @@ def test_bucket_topic_alone_cannot_carry_a_candidate():
     stale_peer = Person(name="Stale Peer", topic_ids={"T12345": 2.0}, keywords={"text-to-sql": 1.0}, assets=[bucket], last_active=date(2024, 1, 1))
     s_stale, _ = score(me, stale_peer, recent_months=24, **kw)
     assert s_lab < s_stale < s_peer
+
+
+def test_single_words_never_reach_code_and_model_search_and_hits_must_carry_the_phrase():
+    """Second live run: single-word keywords ("russian", "archives", "astronautics") sent to GitHub
+    and Hugging Face returned VPN configs, an archiver and a game, each pushed today and ranked
+    above real scientists. Only phrases go to those sources, the hit must contain the phrase, and
+    the keyword-search floor earns no freshness."""
+    from datetime import date
+    from whoelse.match import _mentions, score
+    from whoelse.models import Asset, Person, Profile
+    repo = lambda t, d: Asset(kind="repo", title=t, url="", source="github", summary=d, date=date.today(), extra={"owner": t.split("/")[0]})  # noqa: E731
+    assert _mentions("text-to-sql", repo("a/sqlcoder", "Text-to-SQL for open-weight models"))
+    assert not _mentions("text-to-sql", repo("b/textfiles", "Tools for text files and SQL dumps"))
+    assert not _mentions("citizen appeals", repo("c/appeals", "Appeals court records"))
+    me = Profile(name="Me", keywords={"text-to-sql": 2.0}, assets=[])
+    fresh_repo_owner = Person(name="igareck", ids={"github": "igareck"}, assets=[repo("igareck/vpn-configs", "VPN configs")], last_active=date.today())
+    s_repo, _ = score(me, fresh_repo_owner, recent_months=24, df={}, n_docs=10)
+    assert abs(s_repo - 0.25) < 1e-9   # floor 0.15 + complement 0.1, nothing for being pushed today
+    from whoelse.match import _phrases
+    assert _phrases(["russian", "archives", "text-to-sql", "citizen appeals", "astronautics"]) == ["text-to-sql", "citizen appeals"]

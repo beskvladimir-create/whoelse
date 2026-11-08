@@ -115,3 +115,14 @@ them), with more keyword queries instead; recency multiplies overlap rather than
 the gate needs a shared keyword, a keyword-search hit, a card or a specific topic, and a score
 above 0.05. A keyword-search hit with no OpenAlex keywords counts as one shared keyword, so arXiv
 preprints found on the author's own terms keep their place.
+
+Second live run (same day, from the author's machine) showed the first fix overshot: narrowing
+the topic seed from five to two dropped the people who were only reachable through the third
+topic (they were not demoted, they were no longer found), and single-word keywords sent as
+literal queries to GitHub and Hugging Face returned VPN configs, an archiver and a game, each
+pushed today and lifted by freshness above real scientists. Corrected: the seed is all specific
+(non-bucket) topics up to five, since the df damping in score() is what makes buckets harmless;
+only phrases of two or more words go to code, model and preprint search, and a hit must carry the
+phrase contiguously in its name, description or tags; the keyword-search floor (0.15) earns no
+freshness. Lesson kept: a unit test on score() does not catch a loss at the discovery stage;
+the live run does.

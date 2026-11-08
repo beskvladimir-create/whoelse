@@ -121,9 +121,11 @@ def score(
     # OpenAlex topics are coarse (a text-to-SQL paper lands in "Topic Modeling"); keywords are
     # what actually says "same problem". Free-text keywords also cover code and models.
     overlap_score = 0.25 * t_score + 0.45 * max(k_score, kid_score) + 0.30 * k_score
+    measured_overlap = overlap_score
     if overlap_score == 0.0 and _from_keyword_search(p):
         # found by a query on the user's own terms (arXiv/GitHub/HF carry no OpenAlex keywords):
-        # that is measured overlap, at the level of one shared keyword
+        # that is overlap at the level of one shared keyword, but it earns no freshness bonus,
+        # or a repository pushed today outranks a relevant scientist
         overlap_score = 0.15
 
     my_kinds = {a.kind for a in me.assets}
@@ -137,7 +139,7 @@ def score(
     recency = 0.0
     if p.last_active:
         months = (date.today() - p.last_active).days / 30.4
-        recency = max(0.0, 1.0 - months / max(recent_months, 1)) * 0.5 * overlap_score
+        recency = max(0.0, 1.0 - months / max(recent_months, 1)) * 0.5 * measured_overlap
 
     already = any(_norm_name(c) == _norm_name(me.name) for a in p.assets for c in a.coauthors)
     penalty = 0.5 if already else 0.0
@@ -294,6 +296,22 @@ async def _enrich_safe(p: Person, me: Profile, errors: list[str], *, lookup_gith
         errors.append(f"enrich {p.name}: {type(e).__name__}: {e}")
 
 
+def _phrases(queries: list[str]) -> list[str]:
+    return [q for q in queries if " " in q.strip() or "-" in q]
+
+
+def _mentions(q: str, a: Asset) -> bool:
+    """The search engines are fuzzy; the hit must actually carry the phrase (every word of it) in
+    its name, description or tags, so "text-to-sql" cannot return a repository about text files."""
+    raw = a.title.replace("/", " ") + " " + a.summary + " " + " ".join(a.keywords)
+    words = _norm_name(raw.replace("-", " ").replace("_", " ")).split()
+    need = _norm_name(q.replace("-", " ")).split()
+    if not need:
+        return False
+    n = len(need)
+    return any(words[i:i + n] == need for i in range(len(words) - n + 1))   # the phrase, contiguous
+
+
 def _from_keyword_search(p: Person) -> bool:
     """arXiv/GitHub/HF hits come from a keyword query on the user's own terms; that is overlap
     evidence even when the record carries no OpenAlex keywords to score against."""
@@ -412,7 +430,7 @@ async def find_overlaps(
     include_code: bool = True,
     include_models: bool = True,
     enrich_top: int = 30,
-    topic_limit: int = 2,
+    topic_limit: int = 5,
     keyword_queries: int = 4,
     lookup_github_by_name: bool = True,
 ) -> tuple[list[Candidate], list[str], list[Person]]:
@@ -474,7 +492,7 @@ async def find_overlaps(
         try:
             for r in await github.search_repos(q, since=since, limit=30):
                 owner = r.extra.get("owner", "")
-                if owner and "/" in r.title:
+                if owner and "/" in r.title and _mentions(q, r):
                     p = Person(name=owner, ids={"github": owner})
                     p.contact.github = f"https://github.com/{owner}"
                     p.contact.provenance["github"] = "github repo owner"
@@ -487,7 +505,7 @@ async def find_overlaps(
             for kind in ("model", "dataset"):
                 for r in await huggingface.search(q, kind=kind, limit=30):
                     author = r.extra.get("author", "")
-                    if author:
+                    if author and _mentions(q, r):
                         p = Person(name=author, ids={"huggingface": author})
                         p.contact.huggingface = f"https://huggingface.co/{author}"
                         p.contact.provenance["huggingface"] = "huggingface author"
@@ -496,18 +514,24 @@ async def find_overlaps(
             errors.append(f"huggingface '{q}': {e}")
 
     tasks = [papers_by_keyword(k) for k in list(me.keyword_ids)[:keyword_queries + 2]]
-    # Seed from the user's specific topics only: a bucket topic pulls in a lab's worth of strangers
-    # who share nothing but the bucket (seen live: "Topic Modeling" filling the pool with one lab).
+    # Seed from the user's specific topics: a bucket topic pulls in a lab's worth of strangers who
+    # share nothing but the bucket (seen live: "Topic Modeling" filling the pool with one lab).
+    # The width stays (five specific topics): narrowing it to two lost the people who were only
+    # reachable through the third topic, seen live on the next run. The df damping in score()
+    # is what keeps buckets harmless, not a narrow seed.
     my_topic_names = {tid: name for a in me.assets for tid, name in zip(a.topic_ids, a.topics)}
     specific_topics = [t for t in me.topic_ids if my_topic_names.get(t, "") not in GENERIC_TOPICS]
     tasks += [papers_by_topic(t) for t in specific_topics[:topic_limit]]
     queries = [k for k in me.keywords if len(k) >= 5 and k not in GENERIC][:keyword_queries]
     tasks += [papers_by_query(q) for q in queries]
-    tasks += [preprints_by_query(q) for q in queries[:2]]
+    # Code, model and preprint searches are literal: a single broad word ("russian", "archives")
+    # returns VPN configs and archivers, not research. Only phrases of two or more words go there.
+    phrases = _phrases(queries)
+    tasks += [preprints_by_query(q) for q in phrases[:2]]
     if include_code:
-        tasks += [code_by_query(q) for q in queries]
+        tasks += [code_by_query(q) for q in phrases]
     if include_models:
-        tasks += [models_by_query(q) for q in queries]
+        tasks += [models_by_query(q) for q in phrases]
     await asyncio.gather(*tasks)
 
     people = list(pool.by_key.values())
