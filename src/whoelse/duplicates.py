@@ -582,7 +582,7 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
         if r["only_here"]:
             return ", ".join(r["only_here"])
         # nothing in the feature vocabulary is unique to it: quote its own description instead of inventing a feature
-        return f"per its description: {r['summary'][:120]}" if r.get("summary") else "a working implementation (no description; ask)"
+        return f"per its description: {r['summary'][:120].rstrip('.')}" if r.get("summary") else "a working implementation (no description; ask)"
 
     contributions = {r["repo"]: brings(r) for r in others}
     plural = lambda n, w: f"{n} {w}" + ("" if n == 1 else "s")  # noqa: E731
