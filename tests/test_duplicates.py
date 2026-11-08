@@ -26,7 +26,7 @@ async def test_find_duplicates_ranks_cluster_and_drops_noise():
 async def test_verdict_names_the_winner_when_there_is_one():
     d = await dup.find_duplicates("sync Claude Code sessions across machines")
     # no repo >= 500 stars in the cluster -> "none above N" phrasing
-    assert "none above 320" in d["verdict"]
+    assert "tawanorg/claude-sync (320 stars)" in d["verdict"]
     d2 = await dup.find_duplicates("sync Claude Code sessions across machines", max_stars=10)
     assert all(r["stars"] <= 10 for r in d2["cluster"])
 
