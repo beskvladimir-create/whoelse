@@ -332,6 +332,38 @@ def _is_org(p: Person) -> bool:
     return bool(p.ids.get("github_org") or p.ids.get("huggingface_org"))
 
 
+def _broken_name(p: Person) -> bool:
+    """Author strings that are metadata damage, not people: digits inside the name ("2 S.K.ALISHA
+    1BALAM SATHYA SANDEEP"), seven or more words, or nothing alphabetic. Logins are exempt."""
+    n = p.name.strip()
+    if p.ids.get("github") and not p.ids.get("openalex") and not p.ids.get("orcid"):
+        return False
+    if re.search(r"\d", n):
+        return True
+    words = _norm_name(n).split()
+    return len(words) >= 7 or not words
+
+
+_EMAIL_FREE = {"gmail", "googlemail", "yahoo", "outlook", "hotmail", "proton", "protonmail", "icloud", "mail", "yandex", "qq", "163", "126", "live", "me"}
+
+
+def _email_domain_note(p: Person) -> str | None:
+    """A public email whose domain does not match the stated affiliation is worth a second look
+    before sending (a move, an old address, or a namesake). Free-mail domains say nothing."""
+    if not p.contact.email or "@" not in p.contact.email or not p.affiliation:
+        return None
+    dom = p.contact.email.rsplit("@", 1)[1].lower()
+    labels = [x for x in dom.split(".") if len(x) >= 3 and x not in ("edu", "com", "org", "net", "www")]
+    if not labels or labels[0] in _EMAIL_FREE:
+        return None
+    aff = _aff_tokens(p.affiliation) | {t[:4] for t in _aff_tokens(p.affiliation)}
+    words = [w for w in re.findall(r"[^\W\d_]+", fold(p.affiliation)) if w not in ("of", "the", "de", "and", "for", "di", "du", "der")]
+    acronym = "".join(w[0] for w in words)
+    if any(lab in aff or lab[:4] in aff or lab == acronym or any(lab in a or a in lab for a in aff if len(a) >= 4) for lab in labels):
+        return None
+    return f"email domain {dom} does not match the stated affiliation ({p.affiliation}); check before writing"
+
+
 _AFF_STOP = {"university", "of", "the", "institute", "college", "school", "department", "dept", "lab", "laboratory",
              "research", "center", "centre", "technology", "science", "sciences", "and", "de", "for", "national", "state"}
 
@@ -590,7 +622,7 @@ async def find_overlaps(
     out: list[Candidate] = []
     known: list[Person] = []
     for p in merged:
-        if _is_org(p):
+        if _is_org(p) or _broken_name(p):
             continue
         if ov_is_coauthor(me, p):
             known.append(p)  # not "who else", but worth showing separately
@@ -599,6 +631,8 @@ async def find_overlaps(
         aggregate(p)
         s, ov = score(me, p, recent_months=recent_months, **kw)
         s += {"card": 0.2, "email": 0.05, "website": 0.02, "profile_only": 0.0}[_reachable(p)]
+        if (note := _email_domain_note(p)):
+            p.contact.provenance["email_note"] = note
         out.append(Candidate(person=p, score=round(s, 3), overlap=ov, why=_why(p, ov), reachable=_reachable(p)))  # type: ignore[arg-type]
     out.sort(key=lambda c: -c.score)
     return out[:limit], errors, known

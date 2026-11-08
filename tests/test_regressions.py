@@ -361,3 +361,19 @@ def test_single_words_never_reach_code_and_model_search_and_hits_must_carry_the_
     assert abs(s_repo - 0.25) < 1e-9   # floor 0.15 + complement 0.1, nothing for being pushed today
     from whoelse.match import _phrases
     assert _phrases(["russian", "archives", "text-to-sql", "citizen appeals", "astronautics"]) == ["text-to-sql", "citizen appeals"]
+
+
+def test_broken_author_names_dropped_and_email_domain_mismatch_flagged():
+    from whoelse.match import _broken_name, _email_domain_note
+    from whoelse.models import Contact, Person
+    assert _broken_name(Person(name="2 S.K.ALISHA 1BALAM SATHYA SANDEEP", ids={"openalex": "A1"}))
+    assert not _broken_name(Person(name="Angelo La Gorga", ids={"openalex": "A2"}))
+    assert not _broken_name(Person(name="user42", ids={"github": "user42"}))   # logins may carry digits
+    karl = Person(name="Fabian Karl", affiliation="Universität Ulm", contact=Contact(email="fabian.karl@tum.de"))
+    assert "tum.de" in (_email_domain_note(karl) or "")
+    same = Person(name="X", affiliation="Technical University of Munich", contact=Contact(email="x@tum.de"))
+    assert _email_domain_note(same) is None
+    ulm = Person(name="Y", affiliation="Universität Ulm", contact=Contact(email="y@uni-ulm.de"))
+    assert _email_domain_note(ulm) is None
+    free = Person(name="Z", affiliation="Universität Ulm", contact=Contact(email="z@gmail.com"))
+    assert _email_domain_note(free) is None
