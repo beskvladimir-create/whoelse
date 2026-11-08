@@ -1,4 +1,4 @@
-"""Before you build it: who already did, and what would it take to build it together.
+"""Don't build it alone: who already did, and what would it take to build it together.
 
 Two uses, one engine:
   * find_duplicates(idea): an agent asked to "build X" calls this first and tells the user

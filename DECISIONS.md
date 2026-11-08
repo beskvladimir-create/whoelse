@@ -90,3 +90,15 @@ of it: relevance is measured on job words only, with all of them required for a 
 cluster is reported with its search total and "at least" when capped; an empty cluster next to a
 related field says "the parts exist", never "new". Claude Code plugin added (`plugin/`) so the check
 runs before the agent writes the first line.
+
+## 2026-11-08, analogues checked again
+
+GitHub topic `idea-validation` (8 repositories) and web search: `mnemox-ai/idea-reality-mcp` (created
+2026-02-24, 830 stars, maintenance mode since 2026-08) scores an idea against GitHub, HN, npm, PyPI,
+Stack Overflow and lists similar repositories with pivot hints; `Smartulf123/check-before-you-build`
+(2026-10, 0 stars) is an agent skill that writes "what exists, where the gap is". Neither builds a
+feature matrix, proposes a merge to the authors, or finds the people. Nearest for people:
+ResearcherCollab, CollabFinder (sites with manual profiles), openalex-research-mcp (co-authorship
+data). The section "Before you build it" was renamed "Don't build it alone" to stop sharing a name
+with a stranger's project and to say what is different: whoelse starts where idea checkers stop.
+Searched in English only, GitHub and the open web; closed products and other languages not covered.

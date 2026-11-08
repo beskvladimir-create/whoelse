@@ -1,9 +1,9 @@
 ---
-name: before-you-build
+name: dont-build-it-alone
 description: Use before starting any new project, tool, library, script or app the user describes ("build me", "create a", "write a tool that", "I want to make"). Checks what already exists on GitHub so the user does not rebuild the 21st copy of something.
 ---
 
-# Before you build it
+# Don't build it alone
 
 When the user asks for a new tool, app, library, CLI, plugin, server or script, do this before
 writing any code:

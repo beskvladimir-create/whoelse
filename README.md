@@ -1,8 +1,15 @@
 # whoelse
 
-**You've been working on something for months. Somewhere, three other people are working on the same thing. None of you know.**
+**Don't build it alone.**
 
-whoelse finds them. It reads your papers, your repos and your models, finds the people whose current work overlaps yours, tells you what the two of you could build together, and drafts the first message. You decide who gets it.
+Ask an agent to build something and it will, for the 21st time. Somewhere, twenty people already
+built it, each got ten stars, and three more are working on the same thing right now. None of them
+know each other.
+
+whoelse puts one call in front of the first line of code: what already exists, who won, what nobody
+has, and then the step no other tool takes: a plan to merge the small ones into one project with
+every author on it, or the person whose current work overlaps yours, with what the two of you could
+build and the first message drafted. Nothing is sent without you.
 
 Runs inside Claude, Cursor, Codex or any MCP client. No sign-up, no profile to fill in, no server. Free.
 
@@ -16,12 +23,13 @@ pip install git+https://github.com/beskvladimir-create/whoelse
 
 Nobody is working alone on purpose. It just turns out that way: you publish, nothing happens, you go back to work. The person who would have cited you, tried your code, co-written the next paper with you, is two time zones away and has never heard your name. Discovery runs on conferences and luck, and most people get neither.
 
-whoelse replaces luck with a lookup.
+whoelse replaces luck with a lookup, and then does something with what it finds.
 
-## Before you build it
+## Don't build it alone
 
-Ask your agent to build a tool and it will, happily, for the 21st time. whoelse puts one call in
-front of that:
+Idea checkers exist ([idea-reality-mcp](https://github.com/mnemox-ai/idea-reality-mcp) scores an
+idea against GitHub, HN and npm and stops at "here are similar projects"). whoelse starts where they
+stop. Ask your agent to build a tool:
 
 > Build me a CLI that syncs Claude Code sessions across machines.
 
@@ -35,8 +43,8 @@ Options: contribute the missing backend to claude-sync; build only what nobody h
 merge to the 44 authors (propose_merge).
 ```
 
-That is `find_duplicates`. It searches GitHub for the idea, keeps what is actually the same thing,
-ranks it, and builds a feature matrix: who has what, what only one of them has, what none of them
+That is `find_duplicates`. It searches GitHub for the job the tool does (not the product it serves),
+keeps what is actually the same thing, ranks it, and builds a feature matrix: who has what, what only one of them has, what none of them
 has. The verdict comes first, in one sentence. Hundreds of hours of rebuilding the same thing, and
 the tokens spent on it, stop here.
 
@@ -54,7 +62,7 @@ organisation-owned repository, one with issues turned off, one with 1000+ stars,
 
 ### Put it in front of the agent
 
-`plugin/` is a Claude Code plugin (MCP server plus a `before-you-build` skill) that makes the agent
+`plugin/` is a Claude Code plugin (MCP server plus a `dont-build-it-alone` skill) that makes the agent
 call `find_duplicates` before it starts building anything the user describes. For Cursor, Codex and
 other MCP clients the same skill text goes into the rules file. The user sees what exists before the
 first line is generated, which is the only moment the information is worth anything.

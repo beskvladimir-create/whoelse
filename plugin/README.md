@@ -3,12 +3,12 @@
 Install the MCP server first (`pip install git+https://github.com/beskvladimir-create/whoelse`).
 
 **Claude Code**: `claude --plugin-dir ./plugin` from this repository (one session), or copy
-`skills/before-you-build/SKILL.md` into `~/.claude/skills/before-you-build/` and add the server with
+`skills/dont-build-it-alone/SKILL.md` into `~/.claude/skills/dont-build-it-alone/` and add the server with
 `claude mcp add whoelse -- whoelse`. The skill makes the agent call `find_duplicates` before it
 starts building anything.
 
 **Cursor / Codex / any MCP client**: add `{ "mcpServers": { "whoelse": { "command": "whoelse" } } }`
-to the MCP config and paste the text of `skills/before-you-build/SKILL.md` into your rules file
+to the MCP config and paste the text of `skills/dont-build-it-alone/SKILL.md` into your rules file
 (`.cursor/rules`, `AGENTS.md`).
 
 What the user then sees, before a single line is generated:
