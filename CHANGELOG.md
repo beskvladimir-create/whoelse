@@ -11,4 +11,6 @@ First release.
 - Reach: ORCID public contacts, GitHub profile, GitHub user search by full name (unique hit confirmed by repo subject), whoelse card at /.well-known/whoelse.json.
 - joint_work_brief ranks formats by what each side actually has; draft_outreach gives facts and structure, never sends.
 - Peers: add_peer, whats_new_from_peers, with concrete ways to support; no automated stars or follows.
-- 29 offline tests on recorded fixtures; one-command first run.
+- find_duplicates / propose_merge: what already exists for an idea, who won, what nobody has; a merge plan with one issue per author.
+- publish_request / start_joint_work / whoelse-watch: an open registry of requests, a workspace with a third of the work done, a watcher that starts joint work on a mutual match.
+- 70 offline tests on recorded fixtures; one-command first run.

@@ -18,6 +18,35 @@ Nobody is working alone on purpose. It just turns out that way: you publish, not
 
 whoelse replaces luck with a lookup.
 
+## Before you build it
+
+Ask your agent to build a tool and it will, happily, for the 21st time. whoelse puts one call in
+front of that:
+
+> Build me a CLI that syncs Claude Code sessions across machines.
+
+```
+"sync Claude Code sessions across machines" exists 45 times. The leader is tawanorg/claude-sync
+(320 stars, encrypted sync through Cloudflare R2). The other 44 have a median of 3 stars. Between
+them they have Google Drive, SSH, Syncthing, Tailscale, Obsidian and git-vault backends, Codex and
+Copilot support, a desktop app; none has all of it, and nobody has tests or CI.
+
+Options: contribute the missing backend to claude-sync; build only what nobody has; or propose a
+merge to the 44 authors (propose_merge).
+```
+
+That is `find_duplicates`. It searches GitHub for the idea, keeps what is actually the same thing,
+ranks it, and builds a feature matrix: who has what, what only one of them has, what none of them
+has. The verdict comes first, in one sentence. Hundreds of hours of rebuilding the same thing, and
+the tokens spent on it, stop here.
+
+`propose_merge` goes one step further. For a cluster of small duplicates it writes the merge plan
+(the living leader as the base; what each repository brings, from its own README; every author a
+maintainer with write access; nothing deleted; a release date) and the text of one issue for each
+author, in their own repository, where they already read. The issues go out only after you have
+read them and said yes, from your GitHub account, all at once, so no author is asked to join
+someone else's project: all of them are asked to join one.
+
 ## How it connects strangers
 
 Finding people is the easy half. whoelse is built around the hard half: two people who have never
@@ -167,6 +196,8 @@ Once you've decided someone is one of yours (`add_peer`), whoelse watches what t
 | `joint_work_brief` | one person: the evidence, what each side has, formats ranked by fit and effort, venues in common |
 | `draft_outreach` | facts and structure for the first message; your agent writes it, you send it |
 | `add_peer`, `remove_peer`, `whats_new_from_peers` | your people and what they shipped this month |
+| `find_duplicates` | before building: what exists, who won, what nobody has |
+| `propose_merge` | a merge plan for a cluster of duplicates and one issue per author (sent only on your yes) |
 | `publish_request` | join the network: what you want to build, with whom, by when |
 | `start_joint_work` | a repository with a third of the work done and both names on it |
 | `make_card` | your `/.well-known/whoelse.json` |

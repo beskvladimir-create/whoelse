@@ -332,4 +332,22 @@ put("github_user_ydemir", {"login": "ydemir", "name": "Yusuf Demir", "html_url":
 put("github_repos_ydemir", [])
 put("github_user_kmori", {"login": "kmori", "name": "Kenji Mori", "html_url": "https://github.com/kmori", "email": None, "blog": "", "company": None, "location": None, "type": "User"})
 put("github_me", {"login": "besk-tech"})
+# --- duplicates: a slice of the real "sync claude code sessions" cluster (Nov 2026)
+def repo(full, desc, lang, stars, pushed, topics=()):
+    return {"full_name": full, "html_url": "https://github.com/" + full, "description": desc, "topics": list(topics), "language": lang,
+            "stargazers_count": stars, "forks_count": 0, "pushed_at": pushed, "owner": {"login": full.split("/")[0]}, "license": {"spdx_id": "MIT"}}
+CLUSTER = [
+    repo("tawanorg/claude-sync", "Sync Claude Code sessions across devices using Cloudflare R2 with end-to-end encryption", "Go", 320, "2026-11-06T00:00:00Z"),
+    repo("ahmojo/codex-claude-transfer", "Local-first CLI that moves Codex & Claude Code sessions between machines: export, copy, import. No cloud, optional LAN sync.", "Go", 80, "2026-10-29T00:00:00Z", ["claude-code", "codex", "local-first"]),
+    repo("songkeys/cc-same", "Keep Claude Desktop's local sessions identical across all your accounts. Desktop app (macOS, Windows, Linux) and CLI.", "Rust", 58, "2026-11-07T00:00:00Z"),
+    repo("Vincentvn28/claude-session-sync", "Sync Claude Code sessions (chat history + memory + plans) across machines via Google Drive", "TypeScript", 4, "2026-10-21T00:00:00Z"),
+    repo("sirajeddineaissa/claude-session-sync", "Sync Claude Code sessions across machines. Encrypt and back up conversations to a private GitHub repo", "TypeScript", 3, "2026-09-10T00:00:00Z"),
+    repo("ikook-wang/cc-sync", "Sync Claude Code sessions & config between machines over SSH", "Shell", 2, "2026-09-25T00:00:00Z", ["ssh", "tailscale"]),
+    repo("Voxiven/dotsync", "Sync Claude Code memory, sessions, and dotfiles between machines via Syncthing", "Shell", 2, "2026-10-07T00:00:00Z"),
+    repo("mattbirchler/claude-code-obsidian", "An Obsidian plugin that syncs your Claude Code sessions to Obsidian", "TypeScript", 3, "2026-10-03T00:00:00Z"),
+    repo("chrisdoc/hevy-mcp", "Manage your Hevy workouts and sessions, stay synced", "TypeScript", 533, "2026-11-07T00:00:00Z", ["fitness"]),  # noise
+]
+put("github_search_sync_claude_code_sessions_machines", {"items": CLUSTER})
+put("github_search_claude_sync_sessions", {"items": CLUSTER})
+put("github_search_todo", {"items": []})
 print("fixtures:", len(list(FX.glob("*.json"))))
