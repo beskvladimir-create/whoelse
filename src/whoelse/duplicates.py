@@ -591,7 +591,8 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
     plan_text = "\n".join(plan_md)
 
     n_all = len(cluster) + len(deferred)
-    issue_title = f"{n_all} of us built the same thing. Merge?"
+    us = "you" if sender_note else "us"   # the sender may not be one of the authors
+    issue_title = f"{n_all} of {us} built the same thing. Merge?"
     plan_ref = f"The plan: {plan_url}" if plan_url else "The plan is below."
     issues = []
     for r in cluster:
@@ -600,11 +601,13 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
         if len(peers) > 10:
             shown += f" and {len(peers) - 10} more"
         if r["repo"] == base["repo"]:
-            pieces = "; ".join(f"{o['repo']}: {contributions[o['repo']]}" for o in others[:6])
-            role = (f"Proposal: one repository with all of us as maintainers, and `{r['repo']}` as the base, because it is the most used "
+            named = [o for o in others if o["only_here"]][:6]
+            pieces = "; ".join(f"{o['repo']}: {', '.join(o['only_here'])}" for o in named)
+            pieces = f"{pieces}; the rest their implementations" if named else "their implementations"
+            role = (f"Proposal: one repository with all of {us} as maintainers, and `{r['repo']}` as the base, because it is the most used "
                     f"and most active. The others port their pieces ({pieces}) with their authorship.")
         else:
-            role = (f"Proposal: one repository with all of us as maintainers, `{base['repo']}` as the base ({plural(base['stars'], 'star')}), "
+            role = (f"Proposal: one repository with all of {us} as maintainers, `{base['repo']}` as the base ({plural(base['stars'], 'star')}), "
                     f"your piece ported with your authorship. What yours brings: **{brings(r)}**.")
         more = f" (this round asks {len(cluster)} of them; the rest follow)" if deferred else ""
         who = f"{sender_note}\n\n" if sender_note else ""
