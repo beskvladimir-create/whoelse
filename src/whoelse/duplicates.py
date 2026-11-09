@@ -525,7 +525,10 @@ def _cut(text: str, n: int = 120) -> str:
     if len(text) > n:
         text = text[:n]
         text = text[: text.rfind(" ")] if " " in text else text
-    return text.rstrip(".,;:- ")
+    text = text.rstrip(".,;:- ")
+    while text.split() and text.split()[-1].lower() in {"no", "to", "a", "the", "and", "or", "of", "with", "for", "by", "in", "on"}:
+        text = text[: text.rfind(" ")]
+    return text
 
 
 def _eligible(r: dict[str, Any], me: str | None) -> str | None:
