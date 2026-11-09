@@ -35,8 +35,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install mcp-publisher
+        env:
+          MCP_PUBLISHER_VERSION: v1.8.5
         run: |
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          set -euo pipefail
+          os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          archive="mcp-publisher_${os}_${arch}.tar.gz"
+          curl --fail --location --silent --show-error --output "$archive" "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/$archive"
+          tar xzf "$archive" mcp-publisher
       - name: Version from the tag
         run: |
           V="${{ github.event.inputs.version }}"
