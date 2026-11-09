@@ -5,8 +5,14 @@ name: release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version already on PyPI to (re)publish to the MCP Registry"
+        required: true
 jobs:
   pypi:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -21,6 +27,7 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
   registry:
     needs: pypi
+    if: always() && (needs.pypi.result == 'success' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -32,7 +39,8 @@ jobs:
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
       - name: Version from the tag
         run: |
-          V=${GITHUB_REF#refs/tags/v}
+          V="${{ github.event.inputs.version }}"
+          if [ -z "$V" ]; then V=${GITHUB_REF#refs/tags/v}; fi
           jq --arg v "$V" '.version = $v | .packages[0].version = $v' server.json > s.tmp && mv s.tmp server.json
       - run: ./mcp-publisher login github-oidc
       - run: ./mcp-publisher publish
