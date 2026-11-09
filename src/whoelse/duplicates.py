@@ -519,6 +519,15 @@ class RateLimited(SourceError):
     """GitHub asked us to stop. The whole run stops; nothing is retried inside the tool."""
 
 
+def _cut(text: str, n: int = 120) -> str:
+    """Shorten at a word boundary, without a dangling punctuation mark."""
+    text = text.strip()
+    if len(text) > n:
+        text = text[:n]
+        text = text[: text.rfind(" ")] if " " in text else text
+    return text.rstrip(".,;:- ")
+
+
 def _eligible(r: dict[str, Any], me: str | None) -> str | None:
     """Why a cluster member is not asked to merge, or None if it is."""
     if r.get("archived"):
@@ -582,7 +591,7 @@ def merge_plan(dup: dict[str, Any], *, days: int = 21, plan_url: str | None = No
         if r["only_here"]:
             return ", ".join(r["only_here"])
         # nothing in the feature vocabulary is unique to it: quote its own description instead of inventing a feature
-        return f"per its description: {r['summary'][:120].rstrip('.')}" if r.get("summary") else "a working implementation (no description; ask)"
+        return f"per its description: {_cut(r['summary'])}" if r.get("summary") else "a working implementation (no description; ask)"
 
     contributions = {r["repo"]: brings(r) for r in others}
     plural = lambda n, w: f"{n} {w}" + ("" if n == 1 else "s")  # noqa: E731
