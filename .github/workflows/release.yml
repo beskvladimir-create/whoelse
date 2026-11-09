@@ -42,7 +42,7 @@ jobs:
           os="$(uname -s | tr '[:upper:]' '[:lower:]')"
           arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
           archive="mcp-publisher_${os}_${arch}.tar.gz"
-          curl --fail --location --silent --show-error --output "$archive" "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/$archive"
+          curl --fail --location --silent --show-error --retry 6 --retry-all-errors --retry-delay 15 --output "$archive" "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/$archive"
           tar xzf "$archive" mcp-publisher
       - name: Version from the tag
         run: |
