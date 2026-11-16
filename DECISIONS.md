@@ -149,3 +149,6 @@ verb of the idea is required but not counted (a note-UID generator is not a site
 distinctive job word must match (sessions-to-a-wearable is about the wearable), technical tokens
 (pii, nl2sql) are sharp for membership but cannot alone name a related repository ("mcp server"),
 and no merge is proposed where a 1000+-star leader has decided the field.
+
+### 2026-11-16 — first reply in the session-sync cluster
+sergeiwallace/ai-cli-utils#482: "no thanks", closed as not planned (owner, 05:55 UTC). First human response out of 15 issues after 8 days. Per the proposal text ("Not interested? Ignore this, no follow-up") no reply is sent. Score so far: 0 in, 1 out, 14 silent.
