@@ -152,3 +152,26 @@ and no merge is proposed where a 1000+-star leader has decided the field.
 
 ### 2026-11-16 — first reply in the session-sync cluster
 sergeiwallace/ai-cli-utils#482: "no thanks", closed as not planned (owner, 05:55 UTC). First human response out of 15 issues after 8 days. Per the proposal text ("Not interested? Ignore this, no follow-up") no reply is sent. Score so far: 0 in, 1 out, 14 silent.
+
+### 2026-11-22 — decision day: merge direction closed
+Criterion agreed on 2026-11-09: by 2026-11-22, at least two "in" replies to the session-sync merge proposals, or movement in the awesome-already-built index from other people. Neither happened.
+
+Fourteen days of facts (2026-11-08 → 2026-11-22):
+
+| Measure | Result |
+|---|---|
+| Merge proposals sent (session-sync cluster, round 1) | 15 issues, from Vladimir's account |
+| "in" | 0 |
+| "out" | 1 (sergeiwallace/ai-cli-utils#482, "no thanks", closed not planned, Nov 16) |
+| Silent | 14 (8 of 15 authors had no public activity at all since Nov 8) |
+| Reactions on issues | 0 |
+| whoelse stars / forks | 0 / 0 |
+| whoelse views (14 d) | 30 (6 unique) |
+| whoelse clones (14 d) | 556 (202 unique) — indexer pattern, not people |
+| awesome-already-built stars / forks / external issues or PRs | 0 / 0 / 0 |
+| awesome-already-built views / clones | 9 (5) / 68 (44) |
+| PR punkpeye/awesome-mcp-servers#18892 | open since Nov 8, bot labels only, no maintainer response |
+| mcp.so listing issue chatmcp/mcpso#6933 | open since Nov 8, no response |
+| PyPI, official MCP registry, Glama | listed; no measurable usage signal |
+
+Outcome: criterion not met. Merge direction (propose_merge as a channel, round 2 to the 9 deferred authors, arXiv paper) is closed. The code stays in the repo; the ledger of opened issues stays as the record of the experiment. What remains open is whether whoelse as a tool (find_duplicates / find_people) is worth any further effort; that is Vladimir's call.
