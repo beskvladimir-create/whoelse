@@ -2,6 +2,8 @@
 
 <!-- mcp-name: io.github.beskvladimir-create/whoelse -->
 
+[![beskvladimir-create/whoelse MCP server](https://glama.ai/mcp/servers/beskvladimir-create/whoelse/badges/score.svg)](https://glama.ai/mcp/servers/beskvladimir-create/whoelse)
+
 **Don't build it alone.**
 
 Ask an agent to build something and it will, for the 21st time. Somewhere, twenty people already
